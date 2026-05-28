@@ -8,35 +8,37 @@ pipeline {
   }
 
   parameters {
-    string(name: 'FLOCI_ENDPOINT', defaultValue: 'http://192.168.251.1:4566', description: 'Remote Floci endpoint')
-    string(name: 'POLICY_REPO_URL', defaultValue: 'https://github.com/maxlam96/tf-policy-repo.git', description: 'OPA policy repository URL')
-    string(name: 'POLICY_REPO_BRANCH', defaultValue: 'main', description: 'OPA policy repository branch')
-    string(name: 'POLICY_REPO_CREDENTIALS_ID', defaultValue: 'maxlam96', description: 'Jenkins credentials ID for the OPA policy repository')
-    string(name: 'NETWORK_APPROVERS', defaultValue: 'network-team', description: 'Jenkins users/groups allowed to approve VPC creation')
-    choice(name: 'ENV', choices: ['staging', 'production'], description: 'Terraform environment')
-    booleanParam(name: 'RUN_APPLY', defaultValue: false, description: 'Apply to Floci after OPA passes')
+    string(name: 'FLOCI_ENDPOINT',              defaultValue: 'http://192.168.251.1:4566',              description: 'Remote Floci endpoint')
+    string(name: 'POLICY_REPO_URL',             defaultValue: 'https://github.com/maxlam96/tf-policy-repo.git', description: 'OPA policy repository URL')
+    string(name: 'POLICY_REPO_BRANCH',          defaultValue: 'main',                                   description: 'OPA policy repository branch')
+    string(name: 'POLICY_REPO_CREDENTIALS_ID',  defaultValue: 'maxlam96',                               description: 'Jenkins credentials ID for the OPA policy repository')
+    string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
+    choice(name: 'ENV',                         choices: ['staging', 'production'],                     description: 'Terraform environment')
+    booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes')
+    // Tạm set false — bật lại khi process network approval được resume
+    booleanParam(name: 'REQUIRE_NETWORK_APPROVAL', defaultValue: false,                                 description: 'Require network team approval for VPC creation')
   }
 
   environment {
-    TF_DIR = 'floci-vpc'
+    TF_DIR              = 'floci-vpc'
     POLICY_CHECKOUT_DIR = 'tf-policy-repo'
-    POLICY_DIR = 'tf-policy-repo/policy'
-    REPORT_DIR = 'reports'
-    AWS_ACCESS_KEY_ID = 'test'
-    AWS_SECRET_ACCESS_KEY = 'test'
-    AWS_DEFAULT_REGION = 'ap-southeast-1'
-    AWS_ENDPOINT_URL = "${params.FLOCI_ENDPOINT}"
-    TF_IN_AUTOMATION = 'true'
-    SUBMITTING_TEAM = 'unknown'
+    POLICY_DIR          = 'tf-policy-repo/policy'
+    REPORT_DIR          = 'reports'
+    AWS_ACCESS_KEY_ID       = 'test'
+    AWS_SECRET_ACCESS_KEY   = 'test'
+    AWS_DEFAULT_REGION      = 'ap-southeast-1'
+    AWS_ENDPOINT_URL        = "${params.FLOCI_ENDPOINT}"
+    TF_IN_AUTOMATION        = 'true'
   }
 
   stages {
+
     stage('Checkout Policy Repo') {
       steps {
         dir("${env.POLICY_CHECKOUT_DIR}") {
           git branch: "${params.POLICY_REPO_BRANCH}",
-            credentialsId: "${params.POLICY_REPO_CREDENTIALS_ID}",
-            url: "${params.POLICY_REPO_URL}"
+              credentialsId: "${params.POLICY_REPO_CREDENTIALS_ID}",
+              url: "${params.POLICY_REPO_URL}"
         }
       }
     }
@@ -77,7 +79,16 @@ pipeline {
     }
 
     stage('Network Approval For VPC') {
+      when {
+        // Tạm disable — bật lại bằng cách tick REQUIRE_NETWORK_APPROVAL=true
+        expression { return params.REQUIRE_NETWORK_APPROVAL }
+      }
       steps {
+        sh '''
+          set -eu
+          mkdir -p .opa-data
+          printf '{"change_request":{"submitted_by_team":"not-network"}}\n' > .opa-data/change-request.json
+        '''
         script {
           def hasVpcCreate = sh(
             returnStatus: true,
@@ -88,10 +99,9 @@ pipeline {
 
           if (hasVpcCreate) {
             input message: "Terraform plan creates a VPC. Network team approval is required.",
-              submitter: "${params.NETWORK_APPROVERS}"
-            env.SUBMITTING_TEAM = 'network'
-          } else {
-            env.SUBMITTING_TEAM = 'not-network'
+                  submitter: "${params.NETWORK_APPROVERS}"
+            writeFile file: '.opa-data/change-request.json',
+                      text: '{"change_request":{"submitted_by_team":"network"}}\n'
           }
         }
       }
@@ -101,9 +111,13 @@ pipeline {
       steps {
         sh '''
           set -eu
-          mkdir -p "${REPORT_DIR}"
-          mkdir -p .opa-data
-          printf '{"change_request":{"submitted_by_team":"%s"}}\n' "${SUBMITTING_TEAM}" > .opa-data/change-request.json
+          mkdir -p "${REPORT_DIR}" .opa-data
+
+          # Nếu network approval bị skip → tạo default file để OPA không lỗi
+          if [ ! -f .opa-data/change-request.json ]; then
+            printf '{"change_request":{"submitted_by_team":"not-network"}}\n' > .opa-data/change-request.json
+          fi
+
           conftest test "${TF_DIR}/plan.json" \
             --policy "${POLICY_DIR}" \
             --all-namespaces \
@@ -122,7 +136,8 @@ pipeline {
 
     stage('Archive Policy Report') {
       steps {
-        archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, floci-vpc/plan.json', allowEmptyArchive: true
+        archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, floci-vpc/plan.json',
+                         allowEmptyArchive: true
       }
     }
 
