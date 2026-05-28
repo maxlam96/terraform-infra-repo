@@ -22,6 +22,7 @@ Terraform infrastructure repository for the Jenkins + OPA + Floci lab.
 FLOCI_ENDPOINT=http://192.168.251.1:4566
 POLICY_REPO_URL=https://github.com/maxlam96/tf-policy-repo.git
 POLICY_REPO_BRANCH=main
+POLICY_REPO_CREDENTIALS_ID=maxlam96
 NETWORK_APPROVERS=network-team
 ENV=staging
 RUN_APPLY=false

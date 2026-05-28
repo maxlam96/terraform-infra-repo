@@ -11,6 +11,7 @@ pipeline {
     string(name: 'FLOCI_ENDPOINT', defaultValue: 'http://192.168.251.1:4566', description: 'Remote Floci endpoint')
     string(name: 'POLICY_REPO_URL', defaultValue: 'https://github.com/maxlam96/tf-policy-repo.git', description: 'OPA policy repository URL')
     string(name: 'POLICY_REPO_BRANCH', defaultValue: 'main', description: 'OPA policy repository branch')
+    string(name: 'POLICY_REPO_CREDENTIALS_ID', defaultValue: 'maxlam96', description: 'Jenkins credentials ID for the OPA policy repository')
     string(name: 'NETWORK_APPROVERS', defaultValue: 'network-team', description: 'Jenkins users/groups allowed to approve VPC creation')
     choice(name: 'ENV', choices: ['staging', 'production'], description: 'Terraform environment')
     booleanParam(name: 'RUN_APPLY', defaultValue: false, description: 'Apply to Floci after OPA passes')
@@ -33,7 +34,9 @@ pipeline {
     stage('Checkout Policy Repo') {
       steps {
         dir("${env.POLICY_CHECKOUT_DIR}") {
-          git branch: "${params.POLICY_REPO_BRANCH}", url: "${params.POLICY_REPO_URL}"
+          git branch: "${params.POLICY_REPO_BRANCH}",
+            credentialsId: "${params.POLICY_REPO_CREDENTIALS_ID}",
+            url: "${params.POLICY_REPO_URL}"
         }
       }
     }
