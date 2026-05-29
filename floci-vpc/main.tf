@@ -117,6 +117,8 @@ resource "aws_route_table_association" "database" {
 }
 
 resource "aws_security_group" "vpc_endpoints" {
+  count = var.enable_vpc_endpoints ? 1 : 0
+
   name        = "${local.name_prefix}-vpc-endpoints"
   description = "Allow HTTPS from VPC CIDR to interface VPC endpoints"
   vpc_id      = aws_vpc.main.id
@@ -143,6 +145,8 @@ resource "aws_security_group" "vpc_endpoints" {
 }
 
 resource "aws_vpc_endpoint" "s3" {
+  count = var.enable_vpc_endpoints ? 1 : 0
+
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
@@ -154,14 +158,14 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_vpc_endpoint" "interface" {
-  for_each = local.endpoint_services
+  for_each = var.enable_vpc_endpoints ? local.endpoint_services : {}
 
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.${each.value}"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
   subnet_ids          = [aws_subnet.private.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
 
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-${replace(each.value, ".", "-")}-endpoint"
@@ -169,6 +173,8 @@ resource "aws_vpc_endpoint" "interface" {
 }
 
 resource "aws_kms_key" "logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
   description             = "KMS key for ${local.name_prefix} VPC flow logs"
   deletion_window_in_days = 30
   enable_key_rotation     = true
@@ -194,9 +200,11 @@ resource "aws_kms_key" "logs" {
 }
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
   name              = "/aws/vpc-flow-logs/${local.name_prefix}"
   retention_in_days = 365
-  kms_key_id        = aws_kms_key.logs.arn
+  kms_key_id        = aws_kms_key.logs[0].arn
 
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-vpc-flow-logs"
@@ -204,6 +212,8 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
 }
 
 resource "aws_iam_role" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
   name = "${local.name_prefix}-vpc-flow-logs"
 
   assume_role_policy = jsonencode({
@@ -225,8 +235,10 @@ resource "aws_iam_role" "vpc_flow_logs" {
 }
 
 resource "aws_iam_role_policy" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
   name = "${local.name_prefix}-vpc-flow-logs"
-  role = aws_iam_role.vpc_flow_logs.id
+  role = aws_iam_role.vpc_flow_logs[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -240,8 +252,8 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
           "logs:DescribeLogStreams"
         ]
         Resource = [
-          aws_cloudwatch_log_group.vpc_flow_logs.arn,
-          "${aws_cloudwatch_log_group.vpc_flow_logs.arn}:*"
+          aws_cloudwatch_log_group.vpc_flow_logs[0].arn,
+          "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}:*"
         ]
       }
     ]
@@ -249,8 +261,10 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
 }
 
 resource "aws_flow_log" "main" {
-  iam_role_arn    = aws_iam_role.vpc_flow_logs.arn
-  log_destination = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
+  iam_role_arn    = aws_iam_role.vpc_flow_logs[0].arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_logs[0].arn
   traffic_type    = "ALL"
   vpc_id          = aws_vpc.main.id
 

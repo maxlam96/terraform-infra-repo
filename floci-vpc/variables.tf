@@ -45,3 +45,15 @@ variable "db_subnet_cidr" {
   type        = string
   default     = "10.40.3.0/24"
 }
+
+variable "enable_vpc_endpoints" {
+  description = "Create VPC endpoints. Disable only for emulators that do not implement CreateVpcEndpoint."
+  type        = bool
+  default     = true
+}
+
+variable "enable_vpc_flow_logs" {
+  description = "Create VPC flow logs. Disable only for emulators that do not implement CreateFlowLogs."
+  type        = bool
+  default     = true
+}
