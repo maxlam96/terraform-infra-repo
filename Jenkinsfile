@@ -15,8 +15,6 @@ pipeline {
     string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
     choice(name: 'ENV',                         choices: ['staging', 'production'],                     description: 'Terraform environment')
     booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes')
-    // Tạm set false — bật lại khi process network approval được resume
-    booleanParam(name: 'REQUIRE_NETWORK_APPROVAL', defaultValue: false,                                 description: 'Require network team approval for VPC creation')
   }
 
   environment {
@@ -79,10 +77,6 @@ pipeline {
     }
 
     stage('Network Approval For VPC') {
-      when {
-        // Tạm disable — bật lại bằng cách tick REQUIRE_NETWORK_APPROVAL=true
-        expression { return params.REQUIRE_NETWORK_APPROVAL }
-      }
       steps {
         sh '''
           set -eu
@@ -144,8 +138,11 @@ pipeline {
     stage('Apply To Floci') {
       when {
         allOf {
-          branch 'main'
           expression { return params.RUN_APPLY }
+          anyOf {
+            branch 'main'
+            expression { return env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == null }
+          }
         }
       }
       steps {
