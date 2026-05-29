@@ -114,6 +114,8 @@ pipeline {
             printf '{"change_request":{"submitted_by_team":"not-network"}}\n' > .opa-data/change-request.json
           fi
 
+          echo "===== OPA policy check: JSON report ====="
+          set +e
           conftest test "${TF_DIR}/plan.json" \
             --policy "${POLICY_DIR}" \
             --all-namespaces \
@@ -121,9 +123,36 @@ pipeline {
             --data "${POLICY_DIR}/environments/${ENV}.json" \
             --data ".opa-data/change-request.json" \
             --output json > "${REPORT_DIR}/jenkins-opa-${ENV}.json"
+          OPA_STATUS=$?
+
+          echo "===== OPA policy check: console table ====="
+          conftest test "${TF_DIR}/plan.json" \
+            --policy "${POLICY_DIR}" \
+            --all-namespaces \
+            --data "${POLICY_DIR}/exceptions/allowlist.json" \
+            --data "${POLICY_DIR}/environments/${ENV}.json" \
+            --data ".opa-data/change-request.json" \
+            --output table || true
+
+          echo "===== OPA policy check: summary ====="
+          jq -r '
+            .[] |
+            "namespace=" + (.namespace // "-") +
+            " success=" + ((.successes // []) | length | tostring) +
+            " warnings=" + ((.warnings // []) | length | tostring) +
+            " failures=" + ((.failures // []) | length | tostring) +
+            " exceptions=" + ((.exceptions // []) | length | tostring)
+          ' "${REPORT_DIR}/jenkins-opa-${ENV}.json" || true
+
+          set -e
+          exit "${OPA_STATUS}"
         '''
       }
       post {
+        always {
+          archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, floci-vpc/plan.json',
+                           allowEmptyArchive: true
+        }
         unsuccessful {
           echo 'OPA blocked this run. Check archived jenkins-opa report.'
         }
