@@ -164,6 +164,30 @@ variable "propagate_private_route_tables_vgw" {
   default     = true
 }
 
+variable "enable_direct_connect_gateway" {
+  description = "Create a Direct Connect Gateway and associate it with this VPC VPN Gateway or a supplied associated gateway ID."
+  type        = bool
+  default     = false
+}
+
+variable "direct_connect_gateway_asn" {
+  description = "Amazon side ASN for the Direct Connect Gateway."
+  type        = number
+  default     = 64513
+}
+
+variable "direct_connect_allowed_prefixes" {
+  description = "Allowed prefixes advertised through the Direct Connect Gateway association."
+  type        = list(string)
+  default     = []
+}
+
+variable "direct_connect_associated_gateway_id" {
+  description = "Existing VGW or TGW ID to associate with the Direct Connect Gateway. If null, the module-created VPN Gateway is used."
+  type        = string
+  default     = null
+}
+
 variable "single_nat_gateway" {
   description = "Create only one NAT gateway and route all NAT-enabled subnets through it. Lower cost, lower resilience."
   type        = bool

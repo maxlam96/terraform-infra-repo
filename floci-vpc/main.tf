@@ -27,6 +27,10 @@ module "vpc" {
   enable_vpn_gateway                              = var.enable_vpn_gateway
   amazon_side_asn                                 = var.amazon_side_asn
   propagate_private_route_tables_vgw              = var.propagate_private_route_tables_vgw
+  enable_direct_connect_gateway                   = var.enable_direct_connect_gateway
+  direct_connect_gateway_asn                      = var.direct_connect_gateway_asn
+  direct_connect_allowed_prefixes                 = var.direct_connect_allowed_prefixes
+  direct_connect_associated_gateway_id            = var.direct_connect_associated_gateway_id
   single_nat_gateway                              = var.single_nat_gateway
   enable_dhcp_options                             = var.enable_dhcp_options
   dhcp_options_domain_name                        = var.dhcp_options_domain_name

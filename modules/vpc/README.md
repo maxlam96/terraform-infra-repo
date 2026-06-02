@@ -24,7 +24,26 @@ module "vpc" {
   enable_nat_gateway = true
   single_nat_gateway = false
   enable_vpn_gateway = true
+  enable_direct_connect_gateway = true
+  direct_connect_gateway_asn = 64513
+  direct_connect_allowed_prefixes = ["192.168.10.0/24"]
   enable_dhcp_options = true
+
+  customer_gateways = {
+    branch = {
+      bgp_asn    = 65010
+      ip_address = "203.0.113.10"
+    }
+  }
+
+  vpn_connections = {
+    branch-backup = {
+      customer_gateway_key = "branch"
+      static_routes_only   = false
+      tunnel1_inside_cidr  = "169.254.21.0/30"
+      tunnel2_inside_cidr  = "169.254.22.0/30"
+    }
+  }
 
   vpc_peerings = {
     shared-services = {
@@ -103,7 +122,18 @@ database_subnets = ["10.50.21.0/24", "10.50.22.0/24", "10.50.23.0/24"]
 - IPv6 and IPAM inputs
 - External/reused NAT EIP allocation IDs
 - Customer gateways and site-to-site VPN connections
+- Direct Connect Gateway association for primary hybrid connectivity
 - Transit Gateway VPC attachment and routes
 - VPC peering requests, accepters, DNS options, and route table entries
 - Custom network ACLs and subnet associations
 - Intra subnets for internal-only workloads
+
+## Hybrid Connectivity Pattern
+
+For banking or branch connectivity, use this routing intent:
+
+- Direct Connect is the primary private path.
+- IPSec Site-to-Site VPN is the backup path.
+- BGP is enabled by setting `static_routes_only = false` on `vpn_connections`.
+- Path preference is normally controlled by the on-premises router through BGP local preference or AS path prepending.
+- In Floci labs, keep `enable_direct_connect_gateway = false` if the emulator does not support Direct Connect APIs.

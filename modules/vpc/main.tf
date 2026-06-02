@@ -273,6 +273,11 @@ resource "terraform_data" "guardrails" {
     }
 
     precondition {
+      condition     = length(var.subnets) > 0 || count([for suffix in local.az_suffixes : suffix if suffix == ""]) == 0
+      error_message = "azs must contain full availability zone names like us-east-1a, not only the region name."
+    }
+
+    precondition {
       condition     = length(var.subnets) > 0 || length(var.private_subnets) <= length(var.azs)
       error_message = "private_subnets cannot contain more CIDR blocks than azs."
     }
@@ -290,6 +295,11 @@ resource "terraform_data" "guardrails" {
     precondition {
       condition     = !local.production_mode || var.manage_default_network_acl
       error_message = "Production VPCs must manage the default network ACL."
+    }
+
+    precondition {
+      condition     = !var.enable_direct_connect_gateway || var.enable_vpn_gateway || var.direct_connect_associated_gateway_id != null
+      error_message = "Direct Connect Gateway requires enable_vpn_gateway=true or direct_connect_associated_gateway_id to associate with a VGW/TGW."
     }
   }
 }
@@ -335,6 +345,21 @@ resource "aws_vpn_gateway_route_propagation" "private" {
 
   vpn_gateway_id = aws_vpn_gateway.this[0].id
   route_table_id = each.value
+}
+
+resource "aws_dx_gateway" "this" {
+  count = var.enable_direct_connect_gateway ? 1 : 0
+
+  name            = "${local.name_prefix}-dx-gateway"
+  amazon_side_asn = var.direct_connect_gateway_asn
+}
+
+resource "aws_dx_gateway_association" "this" {
+  count = var.enable_direct_connect_gateway ? 1 : 0
+
+  dx_gateway_id         = aws_dx_gateway.this[0].id
+  associated_gateway_id = var.direct_connect_associated_gateway_id != null ? var.direct_connect_associated_gateway_id : aws_vpn_gateway.this[0].id
+  allowed_prefixes      = var.direct_connect_allowed_prefixes
 }
 
 resource "aws_vpc_dhcp_options" "this" {

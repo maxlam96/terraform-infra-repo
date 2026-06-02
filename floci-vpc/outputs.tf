@@ -23,6 +23,26 @@ output "vpn_gateway_id" {
   value       = module.vpc.vpn_gateway_id
 }
 
+output "customer_gateway_ids" {
+  description = "Customer gateway IDs keyed by name."
+  value       = module.vpc.customer_gateway_ids
+}
+
+output "vpn_connection_ids" {
+  description = "VPN connection IDs keyed by name."
+  value       = module.vpc.vpn_connection_ids
+}
+
+output "direct_connect_gateway_id" {
+  description = "Direct Connect Gateway ID when enabled."
+  value       = module.vpc.direct_connect_gateway_id
+}
+
+output "direct_connect_gateway_association_id" {
+  description = "Direct Connect Gateway association ID when enabled."
+  value       = module.vpc.direct_connect_gateway_association_id
+}
+
 output "database_subnet_group_name" {
   description = "RDS database subnet group name when enabled."
   value       = module.vpc.database_subnet_group_name

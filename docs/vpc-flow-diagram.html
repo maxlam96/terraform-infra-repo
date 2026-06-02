@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terraform VPC Flow Diagram</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d0d5dd;
+      --active: #13795b;
+      --backup: #b56a00;
+      --blocked: #b42318;
+      --off: #98a2b3;
+      --blue: #2355d6;
+      --shadow: 0 8px 24px rgba(15, 23, 42, .08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 292px minmax(720px, 1fr) 340px;
+      gap: 16px;
+      padding: 16px;
+      min-height: calc(100vh - 74px);
+    }
+
+    aside,
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    aside {
+      padding: 14px;
+      overflow: auto;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      line-height: 1.3;
+      text-transform: uppercase;
+      color: #344054;
+      letter-spacing: .04em;
+    }
+
+    .toggle {
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      gap: 9px;
+      align-items: start;
+      padding: 9px 0;
+      border-bottom: 1px solid #eef0f3;
+      font-size: 13px;
+    }
+
+    .toggle:last-child {
+      border-bottom: 0;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 1px 0 0;
+      accent-color: var(--blue);
+    }
+
+    .toggle strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .toggle span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .canvas {
+      position: relative;
+      min-height: 760px;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .diagram {
+      position: relative;
+      height: 710px;
+      min-width: 720px;
+    }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .edge {
+      fill: none;
+      stroke: var(--off);
+      stroke-width: 3;
+      stroke-linecap: round;
+      opacity: .55;
+    }
+
+    .edge.active {
+      stroke: var(--active);
+      opacity: 1;
+    }
+
+    .edge.backup {
+      stroke: var(--backup);
+      stroke-dasharray: 8 6;
+      opacity: 1;
+    }
+
+    .edge.blocked {
+      stroke: var(--blocked);
+      stroke-dasharray: 4 5;
+      opacity: .95;
+    }
+
+    .edge.off {
+      stroke: var(--off);
+      opacity: .25;
+    }
+
+    .node {
+      position: absolute;
+      z-index: 2;
+      width: 148px;
+      min-height: 58px;
+      padding: 10px 11px;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, .08);
+      cursor: pointer;
+    }
+
+    .node h3 {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .node.active {
+      border-color: #72c0a5;
+      background: #f1fbf7;
+    }
+
+    .node.backup {
+      border-color: #f0b15f;
+      background: #fff8eb;
+    }
+
+    .node.blocked {
+      border-color: #f5a5a0;
+      background: #fff3f2;
+    }
+
+    .node.off {
+      color: #98a2b3;
+      border-color: #d0d5dd;
+      background: #f9fafb;
+      box-shadow: none;
+    }
+
+    .node.off p {
+      color: #98a2b3;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      border-radius: 999px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #eef2f7;
+      color: #344054;
+    }
+
+    .detail {
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .detail-card {
+      border: 1px solid #e4e7ec;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+
+    .detail-card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li {
+      margin: 5px 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: #eef2f7;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .impact {
+      color: var(--blocked);
+      font-weight: 700;
+    }
+
+    .ok {
+      color: var(--active);
+      font-weight: 700;
+    }
+
+    .warn {
+      color: var(--backup);
+      font-weight: 700;
+    }
+
+    @media (max-width: 1180px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas {
+        overflow: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Terraform AWS VPC Flow Diagram</h1>
+    <div class="sub">Interactive dependency map for Jenkins, Terraform, OPA, VPC networking, hybrid connectivity, and Floci/AWS apply flow.</div>
+  </header>
+
+  <main>
+    <aside>
+      <h2>Feature Toggles</h2>
+      <label class="toggle"><input id="ci" type="checkbox" checked><span><strong>Jenkins CI/CD</strong><span>Checkout repo, validate, plan, OPA, approval, apply.</span></span></label>
+      <label class="toggle"><input id="opa" type="checkbox" checked><span><strong>OPA Policy Check</strong><span>Blocks unsafe Terraform plan before apply.</span></span></label>
+      <label class="toggle"><input id="approval" type="checkbox" checked><span><strong>Network Approval</strong><span>Required when VPC is created or changed.</span></span></label>
+      <label class="toggle"><input id="nat" type="checkbox" checked><span><strong>NAT Gateway</strong><span>Private subnet egress to Internet.</span></span></label>
+      <label class="toggle"><input id="endpoints" type="checkbox" checked><span><strong>VPC Endpoints</strong><span>Private access to S3, ECR, KMS, Secrets, Logs, STS.</span></span></label>
+      <label class="toggle"><input id="flowlogs" type="checkbox" checked><span><strong>VPC Flow Logs</strong><span>Network visibility and audit trail.</span></span></label>
+      <label class="toggle"><input id="vpn" type="checkbox" checked><span><strong>IPSec VPN Backup</strong><span>Site-to-Site VPN tunnel for backup connectivity.</span></span></label>
+      <label class="toggle"><input id="dx" type="checkbox"><span><strong>Direct Connect Primary</strong><span>Primary private on-prem path for real AWS.</span></span></label>
+      <label class="toggle"><input id="bgp" type="checkbox" checked><span><strong>BGP Routing</strong><span>Dynamic route selection and failover.</span></span></label>
+      <label class="toggle"><input id="tgw" type="checkbox"><span><strong>Transit Gateway</strong><span>Hub-and-spoke multi-VPC or branch routing.</span></span></label>
+      <label class="toggle"><input id="peering" type="checkbox"><span><strong>VPC Peering</strong><span>Point-to-point VPC connectivity.</span></span></label>
+    </aside>
+
+    <section class="canvas">
+      <div class="toolbar">
+        <span class="badge" id="health">Ready</span>
+        <div class="legend">
+          <span><i class="dot" style="background: var(--active)"></i>active</span>
+          <span><i class="dot" style="background: var(--backup)"></i>backup</span>
+          <span><i class="dot" style="background: var(--blocked)"></i>missing dependency</span>
+          <span><i class="dot" style="background: var(--off)"></i>disabled</span>
+        </div>
+      </div>
+
+      <div class="diagram" id="diagram">
+        <svg viewBox="0 0 980 710" preserveAspectRatio="none" aria-hidden="true">
+          <path id="e-jenkins-tf" class="edge" d="M120 70 C210 70 230 130 315 130"></path>
+          <path id="e-tf-opa" class="edge" d="M390 150 C450 180 455 220 510 245"></path>
+          <path id="e-opa-approval" class="edge" d="M585 250 C650 240 675 205 730 175"></path>
+          <path id="e-approval-apply" class="edge" d="M805 175 C860 210 865 270 830 320"></path>
+          <path id="e-apply-vpc" class="edge" d="M760 350 C650 360 610 350 520 360"></path>
+          <path id="e-vpc-public" class="edge" d="M450 385 C380 405 325 440 255 462"></path>
+          <path id="e-vpc-private" class="edge" d="M475 420 C480 455 480 485 480 520"></path>
+          <path id="e-vpc-db" class="edge" d="M535 390 C640 410 700 450 745 505"></path>
+          <path id="e-public-igw" class="edge" d="M210 445 C185 375 160 310 135 255"></path>
+          <path id="e-private-nat" class="edge" d="M410 520 C350 500 305 480 255 455"></path>
+          <path id="e-private-endpoints" class="edge" d="M530 535 C610 535 650 535 710 535"></path>
+          <path id="e-vpc-flowlogs" class="edge" d="M545 365 C620 335 665 305 715 280"></path>
+          <path id="e-onprem-dx" class="edge" d="M120 650 C230 650 275 610 350 600"></path>
+          <path id="e-dx-vgw" class="edge" d="M430 595 C500 585 545 575 610 565"></path>
+          <path id="e-onprem-vpn" class="edge" d="M120 650 C260 680 435 665 610 610"></path>
+          <path id="e-vgw-vpc" class="edge" d="M640 555 C580 500 535 445 505 405"></path>
+          <path id="e-bgp-vgw" class="edge" d="M815 635 C750 620 700 600 660 585"></path>
+          <path id="e-tgw-vpc" class="edge" d="M865 455 C775 430 650 395 545 375"></path>
+          <path id="e-peering-vpc" class="edge" d="M875 90 C760 125 650 210 540 335"></path>
+        </svg>
+
+        <div id="n-jenkins" class="node" style="left: 42px; top: 42px"><h3>Jenkins</h3><p>Pipeline runner</p></div>
+        <div id="n-tf" class="node" style="left: 300px; top: 112px"><h3>Terraform Repo</h3><p>floci-vpc + modules/vpc</p></div>
+        <div id="n-opa" class="node" style="left: 500px; top: 220px"><h3>OPA Policy Repo</h3><p>conftest gate</p></div>
+        <div id="n-approval" class="node" style="left: 720px; top: 145px"><h3>Network Approval</h3><p>VPC change control</p></div>
+        <div id="n-apply" class="node" style="left: 740px; top: 315px"><h3>Apply Target</h3><p>Floci or AWS</p></div>
+        <div id="n-vpc" class="node" style="left: 430px; top: 340px"><h3>VPC</h3><p>Network boundary</p></div>
+        <div id="n-public" class="node" style="left: 150px; top: 430px"><h3>Public Subnet</h3><p>Ingress tier</p></div>
+        <div id="n-private" class="node" style="left: 405px; top: 515px"><h3>Private Subnet</h3><p>App tier</p></div>
+        <div id="n-db" class="node" style="left: 720px; top: 505px"><h3>Database Subnet</h3><p>Isolated data tier</p></div>
+        <div id="n-igw" class="node" style="left: 55px; top: 205px"><h3>Internet Gateway</h3><p>Public ingress/egress</p></div>
+        <div id="n-nat" class="node" style="left: 230px; top: 455px"><h3>NAT Gateway</h3><p>Private egress</p></div>
+        <div id="n-endpoints" class="node" style="left: 700px; top: 520px"><h3>VPC Endpoints</h3><p>AWS private services</p></div>
+        <div id="n-flowlogs" class="node" style="left: 705px; top: 260px"><h3>Flow Logs</h3><p>Audit traffic</p></div>
+        <div id="n-onprem" class="node" style="left: 45px; top: 625px"><h3>On-prem Branch</h3><p>Router/firewall</p></div>
+        <div id="n-dx" class="node" style="left: 345px; top: 575px"><h3>Direct Connect</h3><p>Primary private path</p></div>
+        <div id="n-vgw" class="node" style="left: 600px; top: 555px"><h3>VGW</h3><p>VPN/DX attachment</p></div>
+        <div id="n-vpn" class="node" style="left: 420px; top: 640px"><h3>IPSec VPN</h3><p>Backup tunnel</p></div>
+        <div id="n-bgp" class="node" style="left: 805px; top: 615px"><h3>BGP</h3><p>Route failover</p></div>
+        <div id="n-tgw" class="node" style="left: 845px; top: 425px"><h3>Transit Gateway</h3><p>Hub routing</p></div>
+        <div id="n-peering" class="node" style="left: 840px; top: 62px"><h3>Peer VPC</h3><p>VPC peering</p></div>
+      </div>
+    </section>
+
+    <aside class="detail">
+      <h2>Dependency Logic</h2>
+      <div class="detail-card">
+        <h3 id="selectedTitle">Overall Flow</h3>
+        <ul id="selectedList"></ul>
+      </div>
+
+      <div class="detail-card">
+        <h3>Impact</h3>
+        <ul id="impactList"></ul>
+      </div>
+
+      <div class="detail-card">
+        <h3>Required / Recommended</h3>
+        <ul id="requiredList"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const features = {
+      ci: { label: "Jenkins CI/CD" },
+      opa: { label: "OPA Policy Check", requires: ["ci"] },
+      approval: { label: "Network Approval", requires: ["ci"] },
+      nat: { label: "NAT Gateway" },
+      endpoints: { label: "VPC Endpoints" },
+      flowlogs: { label: "VPC Flow Logs" },
+      vpn: { label: "IPSec VPN Backup", requires: ["bgp"] },
+      dx: { label: "Direct Connect Primary", recommends: ["vpn", "bgp"] },
+      bgp: { label: "BGP Routing" },
+      tgw: { label: "Transit Gateway" },
+      peering: { label: "VPC Peering" }
+    };
+
+    const nodeFeature = {
+      "n-jenkins": "ci",
+      "n-opa": "opa",
+      "n-approval": "approval",
+      "n-nat": "nat",
+      "n-endpoints": "endpoints",
+      "n-flowlogs": "flowlogs",
+      "n-vpn": "vpn",
+      "n-dx": "dx",
+      "n-bgp": "bgp",
+      "n-tgw": "tgw",
+      "n-peering": "peering"
+    };
+
+    const edges = {
+      "e-jenkins-tf": ["ci"],
+      "e-tf-opa": ["ci", "opa"],
+      "e-opa-approval": ["ci", "opa", "approval"],
+      "e-approval-apply": ["ci", "approval"],
+      "e-apply-vpc": ["ci"],
+      "e-vpc-public": [],
+      "e-vpc-private": [],
+      "e-vpc-db": [],
+      "e-public-igw": [],
+      "e-private-nat": ["nat"],
+      "e-private-endpoints": ["endpoints"],
+      "e-vpc-flowlogs": ["flowlogs"],
+      "e-onprem-dx": ["dx", "bgp"],
+      "e-dx-vgw": ["dx", "bgp"],
+      "e-onprem-vpn": ["vpn", "bgp"],
+      "e-vgw-vpc": [["dx", "vpn"]],
+      "e-bgp-vgw": ["bgp", ["dx", "vpn"]],
+      "e-tgw-vpc": ["tgw"],
+      "e-peering-vpc": ["peering"]
+    };
+
+    const descriptions = {
+      ci: {
+        title: "Jenkins CI/CD",
+        flow: ["Checkout terraform-infra-repo.", "Checkout tf-policy-repo.", "Run terraform fmt, init, validate, plan.", "Run OPA/conftest before apply.", "Apply to Floci/AWS after approval."],
+        impact: ["Off: no automated validation, no policy gate, no apply.", "On: pipeline becomes the controlled deployment path."],
+        required: ["Requires Git credentials.", "Requires Terraform CLI/provider.", "Requires access to Floci/AWS endpoint."]
+      },
+      opa: {
+        title: "OPA Policy Check",
+        flow: ["Terraform plan JSON goes to conftest.", "Rules in tf-policy-repo evaluate all namespaces.", "Failures stop apply."],
+        impact: ["Off: unsafe infrastructure can pass to apply.", "On: security/compliance guardrails are enforced."],
+        required: ["Requires tf-policy-repo checkout.", "Requires conftest/OPA in Jenkins agent."]
+      },
+      approval: {
+        title: "Network Approval",
+        flow: ["VPC creation/change pauses for Network team approval.", "Approval then allows OPA/apply stages to continue."],
+        impact: ["Off: VPC changes can run without human network review.", "On: safer for subnet/CIDR/routing changes."],
+        required: ["Recommended for VPC, routing, VPN, DX, TGW, peering changes."]
+      },
+      nat: {
+        title: "NAT Gateway",
+        flow: ["Private subnet default route points to NAT.", "NAT exits through public subnet and Internet Gateway."],
+        impact: ["Off: private workloads cannot reach Internet unless endpoints/proxy exist.", "On: private workloads can update packages and pull external dependencies."],
+        required: ["Requires public subnet.", "Requires Internet Gateway.", "Production should use one NAT per AZ."]
+      },
+      endpoints: {
+        title: "VPC Endpoints",
+        flow: ["Private subnet calls AWS services through endpoint ENI or gateway endpoint.", "Traffic avoids public Internet and reduces NAT dependency."],
+        impact: ["Off: S3/ECR/KMS/Secrets/Logs traffic may go through NAT.", "On: better security path and lower NAT pressure."],
+        required: ["Requires subnet IDs.", "Interface endpoints require security group.", "S3 gateway endpoint requires route table IDs."]
+      },
+      flowlogs: {
+        title: "VPC Flow Logs",
+        flow: ["VPC traffic metadata is delivered to CloudWatch Logs.", "KMS encrypts log group in production pattern."],
+        impact: ["Off: weaker audit and incident investigation.", "On: visibility for security, troubleshooting, and compliance."],
+        required: ["Requires IAM role.", "Requires log group.", "Recommended KMS key and retention policy."]
+      },
+      vpn: {
+        title: "IPSec Site-to-Site VPN Backup",
+        flow: ["On-prem Customer Gateway connects to AWS VGW.", "Two IPSec tunnels carry backup traffic.", "BGP exchanges routes when static_routes_only=false."],
+        impact: ["Off: no backup path when Direct Connect is down.", "On: resilient branch/on-prem connectivity."],
+        required: ["Requires enable_vpn_gateway=true.", "Requires customer_gateways.", "Requires vpn_connections.", "Recommended BGP for failover."]
+      },
+      dx: {
+        title: "Direct Connect Primary",
+        flow: ["On-prem router uses Direct Connect as primary private path.", "DX Gateway associates to VGW/TGW.", "BGP advertises prefixes."],
+        impact: ["Off: hybrid traffic relies on VPN only.", "On: lower latency/private primary path in real AWS."],
+        required: ["Requires DX Gateway support in AWS.", "Requires associated VGW or TGW.", "Recommended IPSec VPN backup."]
+      },
+      bgp: {
+        title: "BGP Failover",
+        flow: ["DX and VPN advertise routes.", "Router preference makes DX primary and VPN backup.", "When DX fails, BGP converges to VPN path."],
+        impact: ["Off: dynamic failover is unavailable; static routes/manual changes are needed.", "On: route selection and failover are automatic."],
+        required: ["For VPN: set static_routes_only=false.", "On-prem controls preference by local-pref or AS path prepend."]
+      },
+      tgw: {
+        title: "Transit Gateway",
+        flow: ["VPC attaches to TGW.", "TGW route table connects multiple VPCs, branches, or shared services."],
+        impact: ["Off: no hub routing.", "On: scalable multi-network topology."],
+        required: ["Requires transit_gateway_id.", "Requires attachment subnet keys.", "Requires route table entries."]
+      },
+      peering: {
+        title: "VPC Peering",
+        flow: ["This VPC creates or accepts peering to a peer VPC.", "Route tables send peer CIDR through pcx."],
+        impact: ["Off: no direct VPC-to-VPC path.", "On: point-to-point private connectivity."],
+        required: ["Requires peer_vpc_id.", "Requires non-overlapping CIDRs.", "Requires route_table_keys and destination_cidr_blocks."]
+      },
+      overall: {
+        title: "Overall Flow",
+        flow: ["Jenkins pulls Terraform and policy repos.", "Terraform creates VPC, subnets, routing, endpoints, logs, and hybrid connectivity.", "OPA blocks non-compliant plans.", "Network approval protects VPC changes.", "Floci is the local AWS-like lab target; AWS real target can enable DX."],
+        impact: ["Disabled controls show gray lines.", "Missing dependencies show red lines.", "Backup paths are dashed amber."],
+        required: ["Use aws_region as region, for example us-east-1.", "Use azs as full AZ names, for example us-east-1a.", "Commit and push changes before Jenkins picks them up."]
+      }
+    };
+
+    const checkbox = id => document.getElementById(id);
+    const enabled = id => checkbox(id).checked;
+
+    function depSatisfied(dep) {
+      if (Array.isArray(dep)) return dep.some(enabled);
+      return enabled(dep);
+    }
+
+    function allSatisfied(deps) {
+      return deps.every(depSatisfied);
+    }
+
+    function edgeState(deps) {
+      if (deps.length === 0) return "active";
+      const flat = deps.flat();
+      const anyRelevantOn = flat.some(enabled);
+      if (!anyRelevantOn) return "off";
+      return allSatisfied(deps) ? "active" : "blocked";
+    }
+
+    function setClass(id, state) {
+      const el = document.getElementById(id);
+      el.classList.remove("active", "backup", "blocked", "off");
+      el.classList.add(state);
+    }
+
+    function updateDiagram(selected = "overall") {
+      for (const [edgeId, deps] of Object.entries(edges)) {
+        let state = edgeState(deps);
+        if (edgeId === "e-onprem-vpn" && state === "active") state = "backup";
+        if (edgeId === "e-bgp-vgw" && state === "active" && enabled("vpn")) state = "backup";
+        setClass(edgeId, state);
+      }
+
+      document.querySelectorAll(".node").forEach(node => {
+        const feature = nodeFeature[node.id];
+        let state = "active";
+        if (feature && !enabled(feature)) state = "off";
+        if (feature && features[feature].requires && !allSatisfied(features[feature].requires)) state = "blocked";
+        if (feature === "vpn" && enabled(feature)) state = "backup";
+        node.classList.remove("active", "backup", "blocked", "off");
+        node.classList.add(state);
+      });
+
+      const blocked = [];
+      for (const [id, feature] of Object.entries(features)) {
+        if (enabled(id) && feature.requires && !allSatisfied(feature.requires)) blocked.push(feature.label);
+      }
+
+      const health = document.getElementById("health");
+      if (blocked.length > 0) {
+        health.textContent = `Missing dependency: ${blocked.join(", ")}`;
+        health.style.background = "#fee4e2";
+        health.style.color = "#b42318";
+      } else if (enabled("dx") && !enabled("vpn")) {
+        health.textContent = "DX primary enabled; VPN backup recommended";
+        health.style.background = "#fff3d6";
+        health.style.color = "#a15c00";
+      } else {
+        health.textContent = "Ready";
+        health.style.background = "#dcfae6";
+        health.style.color = "#13795b";
+      }
+
+      renderDetails(selected);
+    }
+
+    function renderDetails(key) {
+      const data = descriptions[key] || descriptions.overall;
+      document.getElementById("selectedTitle").textContent = data.title;
+      fillList("selectedList", data.flow);
+      fillList("impactList", data.impact.map(item => item.startsWith("Off:") ? `<span class="impact">${item}</span>` : item.startsWith("On:") ? `<span class="ok">${item}</span>` : item));
+      fillList("requiredList", data.required);
+    }
+
+    function fillList(id, items) {
+      const target = document.getElementById(id);
+      target.innerHTML = "";
+      items.forEach(item => {
+        const li = document.createElement("li");
+        li.innerHTML = item;
+        target.appendChild(li);
+      });
+    }
+
+    Object.keys(features).forEach(id => {
+      checkbox(id).addEventListener("change", () => updateDiagram(id));
+    });
+
+    document.querySelectorAll(".node").forEach(node => {
+      node.addEventListener("click", () => updateDiagram(nodeFeature[node.id] || "overall"));
+    });
+
+    updateDiagram("overall");
+  </script>
+</body>
+</html>

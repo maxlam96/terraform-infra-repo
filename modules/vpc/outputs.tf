@@ -96,6 +96,16 @@ output "vpn_connection_ids" {
   value       = { for key, connection in aws_vpn_connection.this : key => connection.id }
 }
 
+output "direct_connect_gateway_id" {
+  description = "Direct Connect Gateway ID when enabled."
+  value       = var.enable_direct_connect_gateway ? aws_dx_gateway.this[0].id : null
+}
+
+output "direct_connect_gateway_association_id" {
+  description = "Direct Connect Gateway association ID when enabled."
+  value       = var.enable_direct_connect_gateway ? aws_dx_gateway_association.this[0].id : null
+}
+
 output "transit_gateway_vpc_attachment_id" {
   description = "Transit Gateway VPC attachment ID when enabled."
   value       = var.enable_transit_gateway_attachment ? aws_ec2_transit_gateway_vpc_attachment.this[0].id : null
