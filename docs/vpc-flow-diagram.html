@@ -321,23 +321,13 @@
 <body>
   <header>
     <h1>Terraform AWS VPC Flow Diagram</h1>
-    <div class="sub">Interactive dependency map for Jenkins, Terraform, OPA, VPC networking, hybrid connectivity, and Floci/AWS apply flow.</div>
+    <div class="sub">Logic-driven dependency map. Toggles update the model first, then the diagram, active paths, impact, and missing requirements.</div>
   </header>
 
   <main>
     <aside>
       <h2>Feature Toggles</h2>
-      <label class="toggle"><input id="ci" type="checkbox" checked><span><strong>Jenkins CI/CD</strong><span>Checkout repo, validate, plan, OPA, approval, apply.</span></span></label>
-      <label class="toggle"><input id="opa" type="checkbox" checked><span><strong>OPA Policy Check</strong><span>Blocks unsafe Terraform plan before apply.</span></span></label>
-      <label class="toggle"><input id="approval" type="checkbox" checked><span><strong>Network Approval</strong><span>Required when VPC is created or changed.</span></span></label>
-      <label class="toggle"><input id="nat" type="checkbox" checked><span><strong>NAT Gateway</strong><span>Private subnet egress to Internet.</span></span></label>
-      <label class="toggle"><input id="endpoints" type="checkbox" checked><span><strong>VPC Endpoints</strong><span>Private access to S3, ECR, KMS, Secrets, Logs, STS.</span></span></label>
-      <label class="toggle"><input id="flowlogs" type="checkbox" checked><span><strong>VPC Flow Logs</strong><span>Network visibility and audit trail.</span></span></label>
-      <label class="toggle"><input id="vpn" type="checkbox" checked><span><strong>IPSec VPN Backup</strong><span>Site-to-Site VPN tunnel for backup connectivity.</span></span></label>
-      <label class="toggle"><input id="dx" type="checkbox"><span><strong>Direct Connect Primary</strong><span>Primary private on-prem path for real AWS.</span></span></label>
-      <label class="toggle"><input id="bgp" type="checkbox" checked><span><strong>BGP Routing</strong><span>Dynamic route selection and failover.</span></span></label>
-      <label class="toggle"><input id="tgw" type="checkbox"><span><strong>Transit Gateway</strong><span>Hub-and-spoke multi-VPC or branch routing.</span></span></label>
-      <label class="toggle"><input id="peering" type="checkbox"><span><strong>VPC Peering</strong><span>Point-to-point VPC connectivity.</span></span></label>
+      <div id="togglePanel"></div>
     </aside>
 
     <section class="canvas">
@@ -352,56 +342,21 @@
       </div>
 
       <div class="diagram" id="diagram">
-        <svg viewBox="0 0 980 710" preserveAspectRatio="none" aria-hidden="true">
-          <path id="e-jenkins-tf" class="edge" d="M120 70 C210 70 230 130 315 130"></path>
-          <path id="e-tf-opa" class="edge" d="M390 150 C450 180 455 220 510 245"></path>
-          <path id="e-opa-approval" class="edge" d="M585 250 C650 240 675 205 730 175"></path>
-          <path id="e-approval-apply" class="edge" d="M805 175 C860 210 865 270 830 320"></path>
-          <path id="e-apply-vpc" class="edge" d="M760 350 C650 360 610 350 520 360"></path>
-          <path id="e-vpc-public" class="edge" d="M450 385 C380 405 325 440 255 462"></path>
-          <path id="e-vpc-private" class="edge" d="M475 420 C480 455 480 485 480 520"></path>
-          <path id="e-vpc-db" class="edge" d="M535 390 C640 410 700 450 745 505"></path>
-          <path id="e-public-igw" class="edge" d="M210 445 C185 375 160 310 135 255"></path>
-          <path id="e-private-nat" class="edge" d="M410 520 C350 500 305 480 255 455"></path>
-          <path id="e-private-endpoints" class="edge" d="M530 535 C610 535 650 535 710 535"></path>
-          <path id="e-vpc-flowlogs" class="edge" d="M545 365 C620 335 665 305 715 280"></path>
-          <path id="e-onprem-dx" class="edge" d="M120 650 C230 650 275 610 350 600"></path>
-          <path id="e-dx-vgw" class="edge" d="M430 595 C500 585 545 575 610 565"></path>
-          <path id="e-onprem-vpn" class="edge" d="M120 650 C260 680 435 665 610 610"></path>
-          <path id="e-vgw-vpc" class="edge" d="M640 555 C580 500 535 445 505 405"></path>
-          <path id="e-bgp-vgw" class="edge" d="M815 635 C750 620 700 600 660 585"></path>
-          <path id="e-tgw-vpc" class="edge" d="M865 455 C775 430 650 395 545 375"></path>
-          <path id="e-peering-vpc" class="edge" d="M875 90 C760 125 650 210 540 335"></path>
-        </svg>
-
-        <div id="n-jenkins" class="node" style="left: 42px; top: 42px"><h3>Jenkins</h3><p>Pipeline runner</p></div>
-        <div id="n-tf" class="node" style="left: 300px; top: 112px"><h3>Terraform Repo</h3><p>floci-vpc + modules/vpc</p></div>
-        <div id="n-opa" class="node" style="left: 500px; top: 220px"><h3>OPA Policy Repo</h3><p>conftest gate</p></div>
-        <div id="n-approval" class="node" style="left: 720px; top: 145px"><h3>Network Approval</h3><p>VPC change control</p></div>
-        <div id="n-apply" class="node" style="left: 740px; top: 315px"><h3>Apply Target</h3><p>Floci or AWS</p></div>
-        <div id="n-vpc" class="node" style="left: 430px; top: 340px"><h3>VPC</h3><p>Network boundary</p></div>
-        <div id="n-public" class="node" style="left: 150px; top: 430px"><h3>Public Subnet</h3><p>Ingress tier</p></div>
-        <div id="n-private" class="node" style="left: 405px; top: 515px"><h3>Private Subnet</h3><p>App tier</p></div>
-        <div id="n-db" class="node" style="left: 720px; top: 505px"><h3>Database Subnet</h3><p>Isolated data tier</p></div>
-        <div id="n-igw" class="node" style="left: 55px; top: 205px"><h3>Internet Gateway</h3><p>Public ingress/egress</p></div>
-        <div id="n-nat" class="node" style="left: 230px; top: 455px"><h3>NAT Gateway</h3><p>Private egress</p></div>
-        <div id="n-endpoints" class="node" style="left: 700px; top: 520px"><h3>VPC Endpoints</h3><p>AWS private services</p></div>
-        <div id="n-flowlogs" class="node" style="left: 705px; top: 260px"><h3>Flow Logs</h3><p>Audit traffic</p></div>
-        <div id="n-onprem" class="node" style="left: 45px; top: 625px"><h3>On-prem Branch</h3><p>Router/firewall</p></div>
-        <div id="n-dx" class="node" style="left: 345px; top: 575px"><h3>Direct Connect</h3><p>Primary private path</p></div>
-        <div id="n-vgw" class="node" style="left: 600px; top: 555px"><h3>VGW</h3><p>VPN/DX attachment</p></div>
-        <div id="n-vpn" class="node" style="left: 420px; top: 640px"><h3>IPSec VPN</h3><p>Backup tunnel</p></div>
-        <div id="n-bgp" class="node" style="left: 805px; top: 615px"><h3>BGP</h3><p>Route failover</p></div>
-        <div id="n-tgw" class="node" style="left: 845px; top: 425px"><h3>Transit Gateway</h3><p>Hub routing</p></div>
-        <div id="n-peering" class="node" style="left: 840px; top: 62px"><h3>Peer VPC</h3><p>VPC peering</p></div>
+        <svg id="edgeLayer" viewBox="0 0 980 710" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div id="nodeLayer"></div>
       </div>
     </section>
 
     <aside class="detail">
-      <h2>Dependency Logic</h2>
+      <h2>Logic Model</h2>
       <div class="detail-card">
         <h3 id="selectedTitle">Overall Flow</h3>
         <ul id="selectedList"></ul>
+      </div>
+
+      <div class="detail-card">
+        <h3>Active Paths</h3>
+        <ul id="pathList"></ul>
       </div>
 
       <div class="detail-card">
@@ -417,187 +372,299 @@
   </main>
 
   <script>
-    const features = {
-      ci: { label: "Jenkins CI/CD" },
-      opa: { label: "OPA Policy Check", requires: ["ci"] },
-      approval: { label: "Network Approval", requires: ["ci"] },
-      nat: { label: "NAT Gateway" },
-      endpoints: { label: "VPC Endpoints" },
-      flowlogs: { label: "VPC Flow Logs" },
-      vpn: { label: "IPSec VPN Backup", requires: ["bgp"] },
-      dx: { label: "Direct Connect Primary", recommends: ["vpn", "bgp"] },
-      bgp: { label: "BGP Routing" },
-      tgw: { label: "Transit Gateway" },
-      peering: { label: "VPC Peering" }
+    const model = {
+      features: {
+        ci: {
+          label: "Jenkins CI/CD",
+          note: "Checkout repo, validate, plan, OPA, approval, apply.",
+          default: true,
+          flow: ["Jenkins checks out terraform-infra-repo.", "Jenkins checks out tf-policy-repo.", "Pipeline runs Terraform validate, plan, OPA gate, approval, and apply."],
+          impactOn: "Pipeline is the controlled deployment path.",
+          impactOff: "No automated deployment, OPA gate, or apply flow.",
+          required: ["Git credentials", "Terraform and provider", "Floci/AWS endpoint access"]
+        },
+        opa: {
+          label: "OPA Policy Check",
+          note: "Blocks unsafe Terraform plan before apply.",
+          default: true,
+          requires: ["ci"],
+          flow: ["Terraform plan JSON is evaluated by conftest.", "All policy namespaces are checked.", "Any deny blocks apply."],
+          impactOn: "Security and compliance guardrails are enforced.",
+          impactOff: "Unsafe infrastructure can reach apply.",
+          required: ["Jenkins CI/CD", "tf-policy-repo checkout", "conftest/OPA in agent image"]
+        },
+        approval: {
+          label: "Network Approval",
+          note: "Required when VPC is created or changed.",
+          default: true,
+          requires: ["ci"],
+          flow: ["VPC and routing changes wait for Network team confirmation.", "Approved changes continue to policy/apply."],
+          impactOn: "CIDR, subnet, routing, VPN, DX, TGW and peering changes are reviewed.",
+          impactOff: "Network-sensitive changes can run without human approval.",
+          required: ["Jenkins input/approval stage", "Network team process"]
+        },
+        nat: {
+          label: "NAT Gateway",
+          note: "Private subnet egress to Internet.",
+          default: true,
+          flow: ["Private subnet default route targets NAT.", "NAT exits through public subnet and Internet Gateway."],
+          impactOn: "Private workloads can reach external package registries and public Internet.",
+          impactOff: "Private workloads lose Internet egress unless endpoints or proxy cover the path.",
+          required: ["Public subnet", "Internet Gateway", "Route table default route"]
+        },
+        endpoints: {
+          label: "VPC Endpoints",
+          note: "Private access to S3, ECR, KMS, Secrets, Logs, STS.",
+          default: true,
+          flow: ["Private subnet reaches AWS services through endpoint ENIs or gateway endpoints.", "Traffic avoids public Internet and NAT for supported services."],
+          impactOn: "AWS service traffic stays private and NAT usage drops.",
+          impactOff: "S3/ECR/KMS/Secrets/Logs access depends on NAT or fails when NAT is off.",
+          required: ["Private subnet IDs", "Route table IDs for gateway endpoint", "Endpoint security group for interface endpoints"]
+        },
+        flowlogs: {
+          label: "VPC Flow Logs",
+          note: "Network visibility and audit trail.",
+          default: true,
+          flow: ["VPC traffic metadata is delivered to CloudWatch Logs.", "Logs support audit, troubleshooting, and incident response."],
+          impactOn: "Traffic visibility exists for security and operations.",
+          impactOff: "Incident investigation and compliance evidence are weaker.",
+          required: ["IAM role", "CloudWatch log group", "KMS encryption in production"]
+        },
+        vpn: {
+          label: "IPSec VPN Backup",
+          note: "Site-to-Site VPN tunnel for backup connectivity.",
+          default: true,
+          requires: ["bgp"],
+          flow: ["Customer Gateway connects on-prem router to AWS VGW.", "Two IPSec tunnels carry backup traffic.", "BGP exchanges routes because static_routes_only=false."],
+          impactOn: "Hybrid connectivity has a backup path when Direct Connect fails.",
+          impactOff: "Direct Connect has no IPSec backup path.",
+          required: ["enable_vpn_gateway=true", "customer_gateways", "vpn_connections", "BGP enabled for failover"]
+        },
+        dx: {
+          label: "Direct Connect Primary",
+          note: "Primary private on-prem path for real AWS.",
+          default: false,
+          requires: ["bgp"],
+          recommends: ["vpn"],
+          flow: ["On-prem router uses Direct Connect as primary private path.", "DX Gateway associates to VGW or TGW.", "BGP advertises allowed prefixes."],
+          impactOn: "Hybrid traffic prefers a private low-latency primary path.",
+          impactOff: "Hybrid traffic uses VPN only, or no hybrid path if VPN is off.",
+          required: ["enable_direct_connect_gateway=true on real AWS", "VGW/TGW association", "BGP on on-prem router", "VPN backup recommended"]
+        },
+        bgp: {
+          label: "BGP Routing",
+          note: "Dynamic route selection and failover.",
+          default: true,
+          flow: ["DX and VPN advertise routes.", "On-prem router prefers DX by local preference.", "When DX fails, BGP converges to VPN."],
+          impactOn: "Route selection and failover are automatic.",
+          impactOff: "VPN/DX paths become static or blocked for this model.",
+          required: ["static_routes_only=false for VPN", "Router local-pref or AS path prepending for DX primary"]
+        },
+        tgw: {
+          label: "Transit Gateway",
+          note: "Hub-and-spoke multi-VPC or branch routing.",
+          default: false,
+          flow: ["VPC attaches to TGW.", "TGW route tables connect VPCs, branches, and shared services."],
+          impactOn: "Multi-network routing can scale through a hub.",
+          impactOff: "No hub routing; use direct VPC, VPN, DX, or peering paths.",
+          required: ["transit_gateway_id", "attachment subnet keys", "route table entries"]
+        },
+        peering: {
+          label: "VPC Peering",
+          note: "Point-to-point VPC connectivity.",
+          default: false,
+          flow: ["This VPC creates or accepts a peering connection.", "Route tables send peer CIDR through pcx."],
+          impactOn: "Peer VPC has point-to-point private connectivity.",
+          impactOff: "No direct VPC-to-VPC peering path.",
+          required: ["peer_vpc_id", "Non-overlapping CIDRs", "route_table_keys and destination_cidr_blocks"]
+        }
+      },
+
+      nodes: [
+        { id: "jenkins", title: "Jenkins", note: "Pipeline runner", x: 42, y: 42, feature: "ci" },
+        { id: "tf", title: "Terraform Repo", note: "floci-vpc + modules/vpc", x: 300, y: 112 },
+        { id: "opa", title: "OPA Policy Repo", note: "conftest gate", x: 500, y: 220, feature: "opa" },
+        { id: "approval", title: "Network Approval", note: "VPC change control", x: 720, y: 145, feature: "approval" },
+        { id: "apply", title: "Apply Target", note: "Floci or AWS", x: 740, y: 315 },
+        { id: "vpc", title: "VPC", note: "Network boundary", x: 430, y: 340 },
+        { id: "public", title: "Public Subnet", note: "Ingress tier", x: 150, y: 430 },
+        { id: "private", title: "Private Subnet", note: "App tier", x: 405, y: 515 },
+        { id: "db", title: "Database Subnet", note: "Isolated data tier", x: 720, y: 505 },
+        { id: "igw", title: "Internet Gateway", note: "Public ingress/egress", x: 55, y: 205 },
+        { id: "nat", title: "NAT Gateway", note: "Private egress", x: 230, y: 455, feature: "nat" },
+        { id: "endpoints", title: "VPC Endpoints", note: "AWS private services", x: 700, y: 520, feature: "endpoints" },
+        { id: "flowlogs", title: "Flow Logs", note: "Audit traffic", x: 705, y: 260, feature: "flowlogs" },
+        { id: "onprem", title: "On-prem Branch", note: "Router/firewall", x: 45, y: 625 },
+        { id: "dx", title: "Direct Connect", note: "Primary path", x: 345, y: 575, feature: "dx" },
+        { id: "vgw", title: "VGW", note: "VPN/DX attachment", x: 600, y: 555 },
+        { id: "vpn", title: "IPSec VPN", note: "Backup tunnel", x: 420, y: 640, feature: "vpn", backup: true },
+        { id: "bgp", title: "BGP", note: "Route failover", x: 805, y: 615, feature: "bgp" },
+        { id: "tgw", title: "Transit Gateway", note: "Hub routing", x: 845, y: 425, feature: "tgw" },
+        { id: "peering", title: "Peer VPC", note: "VPC peering", x: 840, y: 62, feature: "peering" }
+      ],
+
+      edges: [
+        { id: "jenkins-tf", from: "jenkins", to: "tf", deps: ["ci"], path: "M120 70 C210 70 230 130 315 130" },
+        { id: "tf-opa", from: "tf", to: "opa", deps: ["ci", "opa"], path: "M390 150 C450 180 455 220 510 245" },
+        { id: "opa-approval", from: "opa", to: "approval", deps: ["ci", "opa", "approval"], path: "M585 250 C650 240 675 205 730 175" },
+        { id: "approval-apply", from: "approval", to: "apply", deps: ["ci", "approval"], path: "M805 175 C860 210 865 270 830 320" },
+        { id: "apply-vpc", from: "apply", to: "vpc", deps: ["ci"], path: "M760 350 C650 360 610 350 520 360" },
+        { id: "vpc-public", from: "vpc", to: "public", deps: [], path: "M450 385 C380 405 325 440 255 462" },
+        { id: "vpc-private", from: "vpc", to: "private", deps: [], path: "M475 420 C480 455 480 485 480 520" },
+        { id: "vpc-db", from: "vpc", to: "db", deps: [], path: "M535 390 C640 410 700 450 745 505" },
+        { id: "public-igw", from: "public", to: "igw", deps: [], path: "M210 445 C185 375 160 310 135 255" },
+        { id: "private-nat", from: "private", to: "nat", deps: ["nat"], path: "M410 520 C350 500 305 480 255 455" },
+        { id: "private-endpoints", from: "private", to: "endpoints", deps: ["endpoints"], path: "M530 535 C610 535 650 535 710 535" },
+        { id: "vpc-flowlogs", from: "vpc", to: "flowlogs", deps: ["flowlogs"], path: "M545 365 C620 335 665 305 715 280" },
+        { id: "onprem-dx", from: "onprem", to: "dx", deps: ["dx", "bgp"], path: "M120 650 C230 650 275 610 350 600" },
+        { id: "dx-vgw", from: "dx", to: "vgw", deps: ["dx", "bgp"], path: "M430 595 C500 585 545 575 610 565" },
+        { id: "onprem-vpn", from: "onprem", to: "vpn", deps: ["vpn", "bgp"], backup: true, path: "M120 650 C260 680 435 665 610 610" },
+        { id: "vpn-vgw", from: "vpn", to: "vgw", deps: ["vpn", "bgp"], backup: true, path: "M540 665 C585 635 605 610 620 585" },
+        { id: "vgw-vpc", from: "vgw", to: "vpc", deps: [{ anyOf: ["dx", "vpn"] }, "bgp"], path: "M640 555 C580 500 535 445 505 405" },
+        { id: "bgp-vgw", from: "bgp", to: "vgw", deps: ["bgp", { anyOf: ["dx", "vpn"] }], backup: true, path: "M815 635 C750 620 700 600 660 585" },
+        { id: "tgw-vpc", from: "tgw", to: "vpc", deps: ["tgw"], path: "M865 455 C775 430 650 395 545 375" },
+        { id: "peering-vpc", from: "peering", to: "vpc", deps: ["peering"], path: "M875 90 C760 125 650 210 540 335" }
+      ],
+
+      paths: [
+        { label: "CI/CD deploy path", needs: ["ci", "opa", "approval"], route: "Jenkins -> Terraform plan -> OPA gate -> Network approval -> Floci/AWS apply" },
+        { label: "Private Internet egress", needs: ["nat"], route: "Private subnet -> NAT Gateway -> Public subnet -> Internet Gateway" },
+        { label: "Private AWS service path", needs: ["endpoints"], route: "Private subnet -> VPC Endpoints -> S3/ECR/KMS/Secrets/Logs/STS" },
+        { label: "Audit path", needs: ["flowlogs"], route: "VPC traffic metadata -> Flow Logs -> CloudWatch Logs" },
+        { label: "Hybrid primary path", needs: ["dx", "bgp"], route: "On-prem -> Direct Connect -> DX Gateway -> VGW/TGW -> VPC" },
+        { label: "Hybrid backup path", needs: ["vpn", "bgp"], route: "On-prem -> IPSec VPN tunnels -> VGW -> VPC" },
+        { label: "VPN BGP routing", needs: ["vpn", "bgp"], route: "On-prem and AWS exchange routes dynamically through IPSec VPN" },
+        { label: "DX primary with VPN failover", needs: ["dx", "vpn", "bgp"], route: "BGP prefers DX; if DX fails, traffic converges to IPSec VPN" },
+        { label: "Hub routing", needs: ["tgw"], route: "VPC -> Transit Gateway -> other VPCs/branches/shared services" },
+        { label: "Peer VPC route", needs: ["peering"], route: "VPC route table -> VPC peering connection -> peer VPC CIDR" }
+      ]
     };
 
-    const nodeFeature = {
-      "n-jenkins": "ci",
-      "n-opa": "opa",
-      "n-approval": "approval",
-      "n-nat": "nat",
-      "n-endpoints": "endpoints",
-      "n-flowlogs": "flowlogs",
-      "n-vpn": "vpn",
-      "n-dx": "dx",
-      "n-bgp": "bgp",
-      "n-tgw": "tgw",
-      "n-peering": "peering"
+    const state = {
+      selected: "overall"
     };
 
-    const edges = {
-      "e-jenkins-tf": ["ci"],
-      "e-tf-opa": ["ci", "opa"],
-      "e-opa-approval": ["ci", "opa", "approval"],
-      "e-approval-apply": ["ci", "approval"],
-      "e-apply-vpc": ["ci"],
-      "e-vpc-public": [],
-      "e-vpc-private": [],
-      "e-vpc-db": [],
-      "e-public-igw": [],
-      "e-private-nat": ["nat"],
-      "e-private-endpoints": ["endpoints"],
-      "e-vpc-flowlogs": ["flowlogs"],
-      "e-onprem-dx": ["dx", "bgp"],
-      "e-dx-vgw": ["dx", "bgp"],
-      "e-onprem-vpn": ["vpn", "bgp"],
-      "e-vgw-vpc": [["dx", "vpn"]],
-      "e-bgp-vgw": ["bgp", ["dx", "vpn"]],
-      "e-tgw-vpc": ["tgw"],
-      "e-peering-vpc": ["peering"]
-    };
+    const enabled = id => document.getElementById(`feature-${id}`).checked;
 
-    const descriptions = {
-      ci: {
-        title: "Jenkins CI/CD",
-        flow: ["Checkout terraform-infra-repo.", "Checkout tf-policy-repo.", "Run terraform fmt, init, validate, plan.", "Run OPA/conftest before apply.", "Apply to Floci/AWS after approval."],
-        impact: ["Off: no automated validation, no policy gate, no apply.", "On: pipeline becomes the controlled deployment path."],
-        required: ["Requires Git credentials.", "Requires Terraform CLI/provider.", "Requires access to Floci/AWS endpoint."]
-      },
-      opa: {
-        title: "OPA Policy Check",
-        flow: ["Terraform plan JSON goes to conftest.", "Rules in tf-policy-repo evaluate all namespaces.", "Failures stop apply."],
-        impact: ["Off: unsafe infrastructure can pass to apply.", "On: security/compliance guardrails are enforced."],
-        required: ["Requires tf-policy-repo checkout.", "Requires conftest/OPA in Jenkins agent."]
-      },
-      approval: {
-        title: "Network Approval",
-        flow: ["VPC creation/change pauses for Network team approval.", "Approval then allows OPA/apply stages to continue."],
-        impact: ["Off: VPC changes can run without human network review.", "On: safer for subnet/CIDR/routing changes."],
-        required: ["Recommended for VPC, routing, VPN, DX, TGW, peering changes."]
-      },
-      nat: {
-        title: "NAT Gateway",
-        flow: ["Private subnet default route points to NAT.", "NAT exits through public subnet and Internet Gateway."],
-        impact: ["Off: private workloads cannot reach Internet unless endpoints/proxy exist.", "On: private workloads can update packages and pull external dependencies."],
-        required: ["Requires public subnet.", "Requires Internet Gateway.", "Production should use one NAT per AZ."]
-      },
-      endpoints: {
-        title: "VPC Endpoints",
-        flow: ["Private subnet calls AWS services through endpoint ENI or gateway endpoint.", "Traffic avoids public Internet and reduces NAT dependency."],
-        impact: ["Off: S3/ECR/KMS/Secrets/Logs traffic may go through NAT.", "On: better security path and lower NAT pressure."],
-        required: ["Requires subnet IDs.", "Interface endpoints require security group.", "S3 gateway endpoint requires route table IDs."]
-      },
-      flowlogs: {
-        title: "VPC Flow Logs",
-        flow: ["VPC traffic metadata is delivered to CloudWatch Logs.", "KMS encrypts log group in production pattern."],
-        impact: ["Off: weaker audit and incident investigation.", "On: visibility for security, troubleshooting, and compliance."],
-        required: ["Requires IAM role.", "Requires log group.", "Recommended KMS key and retention policy."]
-      },
-      vpn: {
-        title: "IPSec Site-to-Site VPN Backup",
-        flow: ["On-prem Customer Gateway connects to AWS VGW.", "Two IPSec tunnels carry backup traffic.", "BGP exchanges routes when static_routes_only=false."],
-        impact: ["Off: no backup path when Direct Connect is down.", "On: resilient branch/on-prem connectivity."],
-        required: ["Requires enable_vpn_gateway=true.", "Requires customer_gateways.", "Requires vpn_connections.", "Recommended BGP for failover."]
-      },
-      dx: {
-        title: "Direct Connect Primary",
-        flow: ["On-prem router uses Direct Connect as primary private path.", "DX Gateway associates to VGW/TGW.", "BGP advertises prefixes."],
-        impact: ["Off: hybrid traffic relies on VPN only.", "On: lower latency/private primary path in real AWS."],
-        required: ["Requires DX Gateway support in AWS.", "Requires associated VGW or TGW.", "Recommended IPSec VPN backup."]
-      },
-      bgp: {
-        title: "BGP Failover",
-        flow: ["DX and VPN advertise routes.", "Router preference makes DX primary and VPN backup.", "When DX fails, BGP converges to VPN path."],
-        impact: ["Off: dynamic failover is unavailable; static routes/manual changes are needed.", "On: route selection and failover are automatic."],
-        required: ["For VPN: set static_routes_only=false.", "On-prem controls preference by local-pref or AS path prepend."]
-      },
-      tgw: {
-        title: "Transit Gateway",
-        flow: ["VPC attaches to TGW.", "TGW route table connects multiple VPCs, branches, or shared services."],
-        impact: ["Off: no hub routing.", "On: scalable multi-network topology."],
-        required: ["Requires transit_gateway_id.", "Requires attachment subnet keys.", "Requires route table entries."]
-      },
-      peering: {
-        title: "VPC Peering",
-        flow: ["This VPC creates or accepts peering to a peer VPC.", "Route tables send peer CIDR through pcx."],
-        impact: ["Off: no direct VPC-to-VPC path.", "On: point-to-point private connectivity."],
-        required: ["Requires peer_vpc_id.", "Requires non-overlapping CIDRs.", "Requires route_table_keys and destination_cidr_blocks."]
-      },
-      overall: {
-        title: "Overall Flow",
-        flow: ["Jenkins pulls Terraform and policy repos.", "Terraform creates VPC, subnets, routing, endpoints, logs, and hybrid connectivity.", "OPA blocks non-compliant plans.", "Network approval protects VPC changes.", "Floci is the local AWS-like lab target; AWS real target can enable DX."],
-        impact: ["Disabled controls show gray lines.", "Missing dependencies show red lines.", "Backup paths are dashed amber."],
-        required: ["Use aws_region as region, for example us-east-1.", "Use azs as full AZ names, for example us-east-1a.", "Commit and push changes before Jenkins picks them up."]
+    function depOk(dep) {
+      if (typeof dep === "string") return enabled(dep);
+      if (dep.anyOf) return dep.anyOf.some(enabled);
+      return true;
+    }
+
+    function depsOk(deps = []) {
+      return deps.every(depOk);
+    }
+
+    function anyDepOn(deps = []) {
+      if (deps.length === 0) return true;
+      return deps.flatMap(dep => typeof dep === "string" ? [dep] : dep.anyOf || []).some(enabled);
+    }
+
+    function featureState(id) {
+      const feature = model.features[id];
+      if (!enabled(id)) return "off";
+      if (!depsOk(feature.requires || [])) return "blocked";
+      if ((feature.recommends || []).some(dep => !enabled(dep))) return "backup";
+      return "active";
+    }
+
+    function edgeState(edge) {
+      if (!anyDepOn(edge.deps)) return "off";
+      if (!depsOk(edge.deps)) return "blocked";
+      return edge.backup ? "backup" : "active";
+    }
+
+    function renderToggles() {
+      const panel = document.getElementById("togglePanel");
+      panel.innerHTML = "";
+      for (const [id, feature] of Object.entries(model.features)) {
+        const label = document.createElement("label");
+        label.className = "toggle";
+        label.innerHTML = `<input id="feature-${id}" type="checkbox" ${feature.default ? "checked" : ""}>
+          <span><strong>${feature.label}</strong><span>${feature.note}</span></span>`;
+        panel.appendChild(label);
+        label.querySelector("input").addEventListener("change", () => {
+          state.selected = id;
+          update();
+        });
       }
-    };
-
-    const checkbox = id => document.getElementById(id);
-    const enabled = id => checkbox(id).checked;
-
-    function depSatisfied(dep) {
-      if (Array.isArray(dep)) return dep.some(enabled);
-      return enabled(dep);
     }
 
-    function allSatisfied(deps) {
-      return deps.every(depSatisfied);
+    function renderGraph() {
+      const svg = document.getElementById("edgeLayer");
+      const nodes = document.getElementById("nodeLayer");
+      svg.innerHTML = "";
+      nodes.innerHTML = "";
+
+      for (const edge of model.edges) {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.id = `edge-${edge.id}`;
+        path.setAttribute("class", "edge");
+        path.setAttribute("d", edge.path);
+        svg.appendChild(path);
+      }
+
+      for (const node of model.nodes) {
+        const div = document.createElement("div");
+        div.id = `node-${node.id}`;
+        div.className = "node";
+        div.style.left = `${node.x}px`;
+        div.style.top = `${node.y}px`;
+        div.innerHTML = `<h3>${node.title}</h3><p>${node.note}</p>`;
+        div.addEventListener("click", () => {
+          state.selected = node.feature || "overall";
+          update();
+        });
+        nodes.appendChild(div);
+      }
     }
 
-    function edgeState(deps) {
-      if (deps.length === 0) return "active";
-      const flat = deps.flat();
-      const anyRelevantOn = flat.some(enabled);
-      if (!anyRelevantOn) return "off";
-      return allSatisfied(deps) ? "active" : "blocked";
+    function update() {
+      const warnings = [];
+
+      for (const edge of model.edges) {
+        setState(`edge-${edge.id}`, edgeState(edge));
+      }
+
+      for (const node of model.nodes) {
+        let status = "active";
+        if (node.feature) status = featureState(node.feature);
+        if (node.backup && status === "active") status = "backup";
+        setState(`node-${node.id}`, status);
+      }
+
+      for (const [id, feature] of Object.entries(model.features)) {
+        if (enabled(id) && !depsOk(feature.requires || [])) {
+          warnings.push(`${feature.label} thiếu dependency`);
+        }
+        if (enabled(id) && (feature.recommends || []).some(dep => !enabled(dep))) {
+          warnings.push(`${feature.label} nên bật thêm ${feature.recommends.filter(dep => !enabled(dep)).map(dep => model.features[dep].label).join(", ")}`);
+        }
+      }
+
+      if (!enabled("nat") && !enabled("endpoints")) {
+        warnings.push("Private subnet không có Internet egress và cũng không có private AWS service path");
+      }
+
+      renderHealth(warnings);
+      renderDetails();
     }
 
-    function setClass(id, state) {
+    function setState(id, status) {
       const el = document.getElementById(id);
       el.classList.remove("active", "backup", "blocked", "off");
-      el.classList.add(state);
+      el.classList.add(status);
     }
 
-    function updateDiagram(selected = "overall") {
-      for (const [edgeId, deps] of Object.entries(edges)) {
-        let state = edgeState(deps);
-        if (edgeId === "e-onprem-vpn" && state === "active") state = "backup";
-        if (edgeId === "e-bgp-vgw" && state === "active" && enabled("vpn")) state = "backup";
-        setClass(edgeId, state);
-      }
-
-      document.querySelectorAll(".node").forEach(node => {
-        const feature = nodeFeature[node.id];
-        let state = "active";
-        if (feature && !enabled(feature)) state = "off";
-        if (feature && features[feature].requires && !allSatisfied(features[feature].requires)) state = "blocked";
-        if (feature === "vpn" && enabled(feature)) state = "backup";
-        node.classList.remove("active", "backup", "blocked", "off");
-        node.classList.add(state);
-      });
-
-      const blocked = [];
-      for (const [id, feature] of Object.entries(features)) {
-        if (enabled(id) && feature.requires && !allSatisfied(feature.requires)) blocked.push(feature.label);
-      }
-
+    function renderHealth(warnings) {
       const health = document.getElementById("health");
-      if (blocked.length > 0) {
-        health.textContent = `Missing dependency: ${blocked.join(", ")}`;
+      if (warnings.some(item => item.includes("thiếu") || item.includes("không có"))) {
+        health.textContent = warnings[0];
         health.style.background = "#fee4e2";
         health.style.color = "#b42318";
-      } else if (enabled("dx") && !enabled("vpn")) {
-        health.textContent = "DX primary enabled; VPN backup recommended";
+      } else if (warnings.length > 0) {
+        health.textContent = warnings[0];
         health.style.background = "#fff3d6";
         health.style.color = "#a15c00";
       } else {
@@ -605,16 +672,30 @@
         health.style.background = "#dcfae6";
         health.style.color = "#13795b";
       }
-
-      renderDetails(selected);
     }
 
-    function renderDetails(key) {
-      const data = descriptions[key] || descriptions.overall;
-      document.getElementById("selectedTitle").textContent = data.title;
-      fillList("selectedList", data.flow);
-      fillList("impactList", data.impact.map(item => item.startsWith("Off:") ? `<span class="impact">${item}</span>` : item.startsWith("On:") ? `<span class="ok">${item}</span>` : item));
-      fillList("requiredList", data.required);
+    function renderDetails() {
+      const selected = model.features[state.selected] || {
+        label: "Overall Flow",
+        flow: ["Jenkins pulls Terraform and policy repos.", "Terraform creates VPC, subnets, routing, endpoints, flow logs, and hybrid connectivity.", "OPA blocks non-compliant plans.", "Network approval protects VPC changes.", "Floci is the local AWS-like lab target; real AWS can enable Direct Connect."],
+        impactOn: "Enabled paths are green; backup paths are amber dashed; broken dependencies are red.",
+        impactOff: "Disabled paths are gray and removed from Active Paths.",
+        required: ["aws_region must be a region, for example us-east-1.", "azs must be full AZ names, for example us-east-1a.", "Commit and push before Jenkins picks up changes."]
+      };
+
+      document.getElementById("selectedTitle").textContent = selected.label || selected.title;
+      fillList("selectedList", selected.flow || []);
+
+      const activePaths = model.paths
+        .filter(path => depsOk(path.needs))
+        .map(path => `<span class="${path.label.includes("backup") ? "warn" : "ok"}">${path.label}</span>: ${path.route}`);
+      fillList("pathList", activePaths.length ? activePaths : ["No optional feature path is active. Core VPC subnet graph still exists."]);
+
+      fillList("impactList", [
+        `<span class="ok">On:</span> ${selected.impactOn || "Feature path is active."}`,
+        `<span class="impact">Off:</span> ${selected.impactOff || "Feature path is disabled."}`
+      ]);
+      fillList("requiredList", selected.required || []);
     }
 
     function fillList(id, items) {
@@ -627,15 +708,9 @@
       });
     }
 
-    Object.keys(features).forEach(id => {
-      checkbox(id).addEventListener("change", () => updateDiagram(id));
-    });
-
-    document.querySelectorAll(".node").forEach(node => {
-      node.addEventListener("click", () => updateDiagram(nodeFeature[node.id] || "overall"));
-    });
-
-    updateDiagram("overall");
+    renderToggles();
+    renderGraph();
+    update();
   </script>
 </body>
 </html>

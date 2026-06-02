@@ -273,7 +273,7 @@ resource "terraform_data" "guardrails" {
     }
 
     precondition {
-      condition     = length(var.subnets) > 0 || count([for suffix in local.az_suffixes : suffix if suffix == ""]) == 0
+      condition     = length(var.subnets) > 0 || length([for suffix in local.az_suffixes : suffix if suffix == ""]) == 0
       error_message = "azs must contain full availability zone names like us-east-1a, not only the region name."
     }
 
