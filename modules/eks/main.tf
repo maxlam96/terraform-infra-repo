@@ -34,19 +34,115 @@ data "aws_iam_policy_document" "node_assume_role" {
   }
 }
 
+# EKS Cluster Policy - Replaces AmazonEKSClusterPolicy
+data "aws_iam_policy_document" "cluster_policy" {
+  statement {
+    sid    = "EKSServicePolicy"
+    effect = "Allow"
+    actions = [
+      "ec2:CreateNetworkInterface",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeInstances",
+      "ec2:CreateSecurityGroup",
+      "ec2:DescribeTags",
+      "ec2:CreateTags",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+    ]
+    resources = ["*"]
+  }
+}
+
+# Node Worker Policy - Replaces AmazonEKSWorkerNodePolicy
+data "aws_iam_policy_document" "node_worker_policy" {
+  statement {
+    sid    = "EKSWorkerNodePolicy"
+    effect = "Allow"
+    actions = [
+      "ec2:AssociateAddress",
+      "ec2:AttachNetworkInterface",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:CreateNetworkInterface",
+      "ec2:CreateSecurityGroup",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DeleteSecurityGroup",
+      "ec2:DescribeAddresses",
+      "ec2:DescribeInstances",
+      "ec2:DescribeInstanceStatus",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DescribeNetworkInterfaceAttribute",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeTags",
+      "ec2:DetachNetworkInterface",
+      "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:CreateTags",
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+    ]
+    resources = ["*"]
+  }
+}
+
+# EKS CNI Policy - Replaces AmazonEKS_CNI_Policy
+data "aws_iam_policy_document" "node_cni_policy" {
+  statement {
+    sid    = "EKSCNIPolicy"
+    effect = "Allow"
+    actions = [
+      "ec2:AssignPrivateIpAddresses",
+      "ec2:AttachNetworkInterface",
+      "ec2:CreateNetworkInterface",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DescribeInstances",
+      "ec2:DescribeTags",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DetachNetworkInterface",
+      "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:UnassignPrivateIpAddresses",
+    ]
+    resources = ["*"]
+  }
+}
+
+# ECR Read-Only Policy - Replaces AmazonEC2ContainerRegistryReadOnly
+data "aws_iam_policy_document" "node_ecr_read_policy" {
+  statement {
+    sid    = "ECRReadOnlyPolicy"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:DescribeImages",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages",
+    ]
+    resources = ["*"]
+  }
+}
+
 resource "aws_iam_role" "cluster" {
   name               = "${local.cluster_name}-cluster-role"
   assume_role_policy = data.aws_iam_policy_document.cluster_assume_role.json
   tags               = merge(local.common_tags, { Name = "${local.cluster_name}-cluster-role" })
 }
 
-resource "aws_iam_role_policy_attachment" "cluster" {
-  for_each = toset([
-    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
-  ])
-
-  role       = aws_iam_role.cluster.name
-  policy_arn = each.value
+resource "aws_iam_role_policy" "cluster" {
+  name   = "${local.cluster_name}-cluster-policy"
+  role   = aws_iam_role.cluster.id
+  policy = data.aws_iam_policy_document.cluster_policy.json
 }
 
 resource "aws_iam_role" "node" {
@@ -55,15 +151,22 @@ resource "aws_iam_role" "node" {
   tags               = merge(local.common_tags, { Name = "${local.cluster_name}-node-role" })
 }
 
-resource "aws_iam_role_policy_attachment" "node" {
-  for_each = toset([
-    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
-    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
-  ])
+resource "aws_iam_role_policy" "node_worker" {
+  name   = "${local.cluster_name}-node-worker-policy"
+  role   = aws_iam_role.node.id
+  policy = data.aws_iam_policy_document.node_worker_policy.json
+}
 
-  role       = aws_iam_role.node.name
-  policy_arn = each.value
+resource "aws_iam_role_policy" "node_cni" {
+  name   = "${local.cluster_name}-node-cni-policy"
+  role   = aws_iam_role.node.id
+  policy = data.aws_iam_policy_document.node_cni_policy.json
+}
+
+resource "aws_iam_role_policy" "node_ecr_read" {
+  name   = "${local.cluster_name}-node-ecr-read-policy"
+  role   = aws_iam_role.node.id
+  policy = data.aws_iam_policy_document.node_ecr_read_policy.json
 }
 
 resource "aws_kms_key" "cluster" {
@@ -166,7 +269,7 @@ resource "aws_eks_cluster" "this" {
 
   depends_on = [
     aws_cloudwatch_log_group.cluster,
-    aws_iam_role_policy_attachment.cluster,
+    aws_iam_role_policy.cluster,
   ]
 }
 
@@ -199,7 +302,9 @@ resource "aws_eks_node_group" "managed" {
   })
 
   depends_on = [
-    aws_iam_role_policy_attachment.node,
+    aws_iam_role_policy.node_worker,
+    aws_iam_role_policy.node_cni,
+    aws_iam_role_policy.node_ecr_read,
   ]
 }
 
