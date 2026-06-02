@@ -9,10 +9,13 @@ provider "aws" {
   skip_requesting_account_id  = true
 
   endpoints {
-    ec2  = var.floci_endpoint
-    iam  = var.floci_endpoint
-    kms  = var.floci_endpoint
-    logs = var.floci_endpoint
-    sts  = var.floci_endpoint
+    ec2         = var.floci_endpoint
+    elasticache = var.floci_endpoint
+    iam         = var.floci_endpoint
+    kms         = var.floci_endpoint
+    logs        = var.floci_endpoint
+    rds         = var.floci_endpoint
+    redshift    = var.floci_endpoint
+    sts         = var.floci_endpoint
   }
 }

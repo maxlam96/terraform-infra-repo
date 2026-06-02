@@ -1,274 +1,61 @@
-locals {
-  name_prefix = "${var.project}-${var.environment}"
+module "vpc" {
+  source = "../modules/vpc"
 
-  common_tags = {
-    Environment = var.environment
-    Owner       = "platform"
-    Project     = var.project
-    ManagedBy   = "terraform"
-  }
+  name        = var.name
+  aws_region  = var.aws_region
+  environment = var.environment
+  project     = var.project
+  owner       = var.owner
+  tags        = var.tags
 
-  endpoint_services = {
-    kms            = "kms"
-    secretsmanager = "secretsmanager"
-    logs           = "logs"
-    ecr_api        = "ecr.api"
-    ecr_dkr        = "ecr.dkr"
-    sts            = "sts"
-  }
-}
-
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-vpc"
-  })
-}
-
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-igw"
-  })
-}
-
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidr
-  availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = false
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-public-a"
-    Tier = "public"
-  })
-}
-
-resource "aws_subnet" "private" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.private_subnet_cidr
-  availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = false
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-private-a"
-    Tier = "private"
-  })
-}
-
-resource "aws_subnet" "database" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.db_subnet_cidr
-  availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = false
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-db-a"
-    Tier = "database"
-  })
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-public-rt"
-  })
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-private-rt"
-  })
-}
-
-resource "aws_route_table" "database" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-db-rt"
-  })
-}
-
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "private" {
-  subnet_id      = aws_subnet.private.id
-  route_table_id = aws_route_table.private.id
-}
-
-resource "aws_route_table_association" "database" {
-  subnet_id      = aws_subnet.database.id
-  route_table_id = aws_route_table.database.id
-}
-
-resource "aws_security_group" "vpc_endpoints" {
-  count = var.enable_vpc_endpoints ? 1 : 0
-
-  name        = "${local.name_prefix}-vpc-endpoints"
-  description = "Allow HTTPS from VPC CIDR to interface VPC endpoints"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "HTTPS from lab VPC"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    description = "HTTPS response traffic"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-vpc-endpoints-sg"
-  })
-}
-
-resource "aws_vpc_endpoint" "s3" {
-  count = var.enable_vpc_endpoints ? 1 : 0
-
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${var.aws_region}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id, aws_route_table.database.id]
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-s3-endpoint"
-  })
-}
-
-resource "aws_vpc_endpoint" "interface" {
-  for_each = var.enable_vpc_endpoints ? local.endpoint_services : {}
-
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.${each.value}"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = false
-  subnet_ids          = [aws_subnet.private.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-${replace(each.value, ".", "-")}-endpoint"
-  })
-}
-
-resource "aws_kms_key" "logs" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-
-  description             = "KMS key for ${local.name_prefix} VPC flow logs"
-  deletion_window_in_days = 30
-  enable_key_rotation     = true
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowAccountAdministration"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::000000000000:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      }
-    ]
-  })
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-logs-kms"
-  })
-}
-
-resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-
-  name              = "/aws/vpc-flow-logs/${local.name_prefix}"
-  retention_in_days = 365
-  kms_key_id        = aws_kms_key.logs[0].arn
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-vpc-flow-logs"
-  })
-}
-
-resource "aws_iam_role" "vpc_flow_logs" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-
-  name = "${local.name_prefix}-vpc-flow-logs"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "vpc-flow-logs.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-vpc-flow-logs-role"
-  })
-}
-
-resource "aws_iam_role_policy" "vpc_flow_logs" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-
-  name = "${local.name_prefix}-vpc-flow-logs"
-  role = aws_iam_role.vpc_flow_logs[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams"
-        ]
-        Resource = [
-          aws_cloudwatch_log_group.vpc_flow_logs[0].arn,
-          "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}:*"
-        ]
-      }
-    ]
-  })
-}
-
-resource "aws_flow_log" "main" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-
-  iam_role_arn    = aws_iam_role.vpc_flow_logs[0].arn
-  log_destination = aws_cloudwatch_log_group.vpc_flow_logs[0].arn
-  traffic_type    = "ALL"
-  vpc_id          = aws_vpc.main.id
-
-  tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-flow-log"
-  })
+  cidr                                            = var.cidr
+  vpc_cidr                                        = var.vpc_cidr
+  ipv4_ipam_pool_id                               = var.ipv4_ipam_pool_id
+  ipv4_netmask_length                             = var.ipv4_netmask_length
+  enable_ipv6                                     = var.enable_ipv6
+  ipv6_ipam_pool_id                               = var.ipv6_ipam_pool_id
+  ipv6_netmask_length                             = var.ipv6_netmask_length
+  azs                                             = var.azs
+  private_subnets                                 = var.private_subnets
+  public_subnets                                  = var.public_subnets
+  database_subnets                                = var.database_subnets
+  intra_subnets                                   = var.intra_subnets
+  subnets                                         = var.subnets
+  enable_internet_gateway                         = var.enable_internet_gateway
+  enable_nat_gateway                              = var.enable_nat_gateway
+  external_nat_ip_ids                             = var.external_nat_ip_ids
+  enable_vpn_gateway                              = var.enable_vpn_gateway
+  amazon_side_asn                                 = var.amazon_side_asn
+  propagate_private_route_tables_vgw              = var.propagate_private_route_tables_vgw
+  single_nat_gateway                              = var.single_nat_gateway
+  enable_dhcp_options                             = var.enable_dhcp_options
+  dhcp_options_domain_name                        = var.dhcp_options_domain_name
+  dhcp_options_domain_name_servers                = var.dhcp_options_domain_name_servers
+  dhcp_options_ntp_servers                        = var.dhcp_options_ntp_servers
+  manage_default_security_group                   = var.manage_default_security_group
+  manage_default_network_acl                      = var.manage_default_network_acl
+  manage_default_route_table                      = var.manage_default_route_table
+  enable_vpc_endpoints                            = var.enable_vpc_endpoints
+  endpoint_services                               = var.endpoint_services
+  gateway_endpoint_subnet_keys                    = var.gateway_endpoint_subnet_keys
+  interface_endpoint_subnet_keys                  = var.interface_endpoint_subnet_keys
+  enable_vpc_flow_logs                            = var.enable_vpc_flow_logs
+  flow_log_retention_days                         = var.flow_log_retention_days
+  create_database_subnet_group                    = var.create_database_subnet_group
+  create_elasticache_subnet_group                 = var.create_elasticache_subnet_group
+  create_redshift_subnet_group                    = var.create_redshift_subnet_group
+  customer_gateways                               = var.customer_gateways
+  vpn_connections                                 = var.vpn_connections
+  enable_transit_gateway_attachment               = var.enable_transit_gateway_attachment
+  transit_gateway_id                              = var.transit_gateway_id
+  transit_gateway_attachment_subnet_keys          = var.transit_gateway_attachment_subnet_keys
+  transit_gateway_routes                          = var.transit_gateway_routes
+  transit_gateway_dns_support                     = var.transit_gateway_dns_support
+  transit_gateway_ipv6_support                    = var.transit_gateway_ipv6_support
+  transit_gateway_appliance_mode_support          = var.transit_gateway_appliance_mode_support
+  transit_gateway_default_route_table_association = var.transit_gateway_default_route_table_association
+  transit_gateway_default_route_table_propagation = var.transit_gateway_default_route_table_propagation
+  vpc_peerings                                    = var.vpc_peerings
+  vpc_peering_accepters                           = var.vpc_peering_accepters
+  network_acls                                    = var.network_acls
 }

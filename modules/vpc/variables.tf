@@ -1,31 +1,22 @@
 variable "aws_region" {
-  description = "AWS-compatible region used by Floci."
+  description = "AWS region used to build availability zone and endpoint service names."
   type        = string
-  default     = "ap-southeast-1"
 }
 
 variable "environment" {
-  description = "Environment tag and policy context."
+  description = "Environment name used in tags and resource names."
   type        = string
-  default     = "staging"
-}
-
-variable "floci_endpoint" {
-  description = "Remote Floci AWS-compatible endpoint."
-  type        = string
-  default     = "http://192.168.251.1:4566"
-}
-
-variable "project" {
-  description = "Project name used in names and tags."
-  type        = string
-  default     = "floci-vpc-lab"
 }
 
 variable "name" {
   description = "VPC name prefix. This follows the terraform-aws-modules/vpc style."
   type        = string
   default     = null
+}
+
+variable "project" {
+  description = "Project name used in tags and resource names when name is not set."
+  type        = string
 }
 
 variable "owner" {
@@ -38,12 +29,6 @@ variable "tags" {
   description = "Additional tags merged into every supported resource."
   type        = map(string)
   default     = {}
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the lab VPC."
-  type        = string
-  default     = "10.40.0.0/16"
 }
 
 variable "cidr" {
@@ -82,6 +67,30 @@ variable "ipv6_netmask_length" {
   default     = null
 }
 
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC when cidr is not set."
+  type        = string
+  default     = null
+}
+
+variable "enable_dns_hostnames" {
+  description = "Whether DNS hostnames are enabled for the VPC."
+  type        = bool
+  default     = true
+}
+
+variable "enable_dns_support" {
+  description = "Whether DNS support is enabled for the VPC."
+  type        = bool
+  default     = true
+}
+
+variable "enable_internet_gateway" {
+  description = "Whether to create an internet gateway for public-route subnets."
+  type        = bool
+  default     = true
+}
+
 variable "subnets" {
   description = "Advanced subnet definitions keyed by logical name. If empty, azs/private_subnets/public_subnets/database_subnets are used."
   type = map(object({
@@ -105,33 +114,27 @@ variable "azs" {
 }
 
 variable "private_subnets" {
-  description = "Private subnet CIDR blocks, one per AZ."
+  description = "Private subnet CIDR blocks, one per AZ. These route through NAT when enable_nat_gateway is true."
   type        = list(string)
   default     = []
 }
 
 variable "public_subnets" {
-  description = "Public subnet CIDR blocks, one per AZ."
+  description = "Public subnet CIDR blocks, one per AZ. These receive a default route to the internet gateway."
   type        = list(string)
   default     = []
 }
 
 variable "database_subnets" {
-  description = "Database subnet CIDR blocks, one per AZ."
+  description = "Database subnet CIDR blocks, one per AZ. These are isolated by default."
   type        = list(string)
   default     = []
 }
 
 variable "intra_subnets" {
-  description = "Intra subnet CIDR blocks, one per AZ."
+  description = "Intra subnet CIDR blocks, one per AZ. These are isolated and useful for internal-only services."
   type        = list(string)
   default     = []
-}
-
-variable "enable_internet_gateway" {
-  description = "Whether to create an internet gateway for public-route subnets."
-  type        = bool
-  default     = true
 }
 
 variable "enable_nat_gateway" {
@@ -192,6 +195,18 @@ variable "dhcp_options_ntp_servers" {
   description = "DHCP options NTP servers."
   type        = list(string)
   default     = []
+}
+
+variable "dhcp_options_netbios_name_servers" {
+  description = "DHCP options NetBIOS name servers."
+  type        = list(string)
+  default     = []
+}
+
+variable "dhcp_options_netbios_node_type" {
+  description = "DHCP options NetBIOS node type."
+  type        = string
+  default     = null
 }
 
 variable "manage_default_security_group" {
@@ -410,4 +425,10 @@ variable "flow_log_retention_days" {
   description = "CloudWatch Logs retention for VPC flow logs."
   type        = number
   default     = 365
+}
+
+variable "kms_deletion_window_in_days" {
+  description = "KMS deletion window for the flow log key."
+  type        = number
+  default     = 30
 }
