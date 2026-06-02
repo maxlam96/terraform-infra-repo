@@ -21,7 +21,7 @@ pipeline {
 	  }
 
   environment {
-	    TF_DIR              = "${params.TF_DIR}"
+	    TF_DIR              = "${params.TF_DIR ?: 'floci-vpc'}"
     POLICY_CHECKOUT_DIR = 'tf-policy-repo'
     POLICY_DIR          = 'tf-policy-repo/policy'
     REPORT_DIR          = 'reports'
