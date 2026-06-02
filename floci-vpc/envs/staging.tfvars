@@ -11,39 +11,19 @@ public_subnets   = ["10.40.1.0/24"]
 private_subnets  = ["10.40.2.0/24"]
 database_subnets = ["10.40.3.0/24"]
 
-enable_nat_gateway   = true
-enable_vpc_endpoints = true
-enable_vpc_flow_logs = true
+# Floci currently does not emulate these AWS APIs; production.tfvars keeps them enabled.
+enable_nat_gateway   = false
+enable_vpc_endpoints = false
+enable_vpc_flow_logs = false
 
-enable_vpn_gateway                   = true
+enable_vpn_gateway                   = false
 amazon_side_asn                      = 64512
-propagate_private_route_tables_vgw   = true
+propagate_private_route_tables_vgw   = false
 enable_direct_connect_gateway        = false
 direct_connect_gateway_asn           = 64513
 direct_connect_allowed_prefixes      = ["192.168.10.0/24"]
 direct_connect_associated_gateway_id = null
 
-customer_gateways = {
-  branch_primary = {
-    bgp_asn    = 65010
-    ip_address = "203.0.113.10"
-    tags = {
-      ConnectivityRole = "onprem-primary-dx-backup-vpn"
-    }
-  }
-}
+customer_gateways = {}
 
-vpn_connections = {
-  branch_backup = {
-    customer_gateway_key = "branch_primary"
-    static_routes_only   = false
-    tunnel1_inside_cidr  = "169.254.21.0/30"
-    tunnel2_inside_cidr  = "169.254.22.0/30"
-    tags = {
-      ConnectivityRole = "ipsec-backup"
-      RoutingMode      = "bgp"
-      PrimaryPath      = "direct-connect"
-      BackupPath       = "ipsec-vpn"
-    }
-  }
-}
+vpn_connections = {}
