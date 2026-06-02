@@ -171,7 +171,6 @@ pipeline {
       when {
         allOf {
 	          expression { return params.RUN_APPLY }
-	          expression { return params.TF_DIR == 'floci-vpc' }
 	          anyOf {
             branch 'main'
             expression { return env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == null }
