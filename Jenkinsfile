@@ -12,15 +12,16 @@ pipeline {
   parameters {
     string(name: 'FLOCI_ENDPOINT',              defaultValue: 'http://192.168.251.1:4566',              description: 'Remote Floci endpoint')
     string(name: 'POLICY_REPO_URL',             defaultValue: 'https://github.com/maxlam96/tf-policy-repo.git', description: 'OPA policy repository URL')
-    string(name: 'POLICY_REPO_BRANCH',          defaultValue: 'main',                                   description: 'OPA policy repository branch')
-    string(name: 'POLICY_REPO_CREDENTIALS_ID',  defaultValue: 'maxlam96',                               description: 'Jenkins credentials ID for the OPA policy repository')
-    string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
-    choice(name: 'ENV',                         choices: ['staging', 'production'],                     description: 'Terraform environment')
-    booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes')
-  }
+	    string(name: 'POLICY_REPO_BRANCH',          defaultValue: 'main',                                   description: 'OPA policy repository branch')
+	    string(name: 'POLICY_REPO_CREDENTIALS_ID',  defaultValue: 'maxlam96',                               description: 'Jenkins credentials ID for the OPA policy repository')
+	    string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
+	    choice(name: 'TF_DIR',                      choices: ['floci-vpc', 'floci-eks'],                   description: 'Terraform stack to validate, plan, and check with OPA')
+	    choice(name: 'ENV',                         choices: ['staging', 'production'],                     description: 'Terraform environment')
+	    booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes. Only floci-vpc is Floci apply-compatible.')
+	  }
 
   environment {
-    TF_DIR              = 'floci-vpc'
+	    TF_DIR              = "${params.TF_DIR}"
     POLICY_CHECKOUT_DIR = 'tf-policy-repo'
     POLICY_DIR          = 'tf-policy-repo/policy'
     REPORT_DIR          = 'reports'
@@ -150,7 +151,7 @@ pipeline {
       }
       post {
         always {
-          archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, floci-vpc/plan.json',
+	          archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, */plan.json',
                            allowEmptyArchive: true
         }
         unsuccessful {
@@ -161,7 +162,7 @@ pipeline {
 
     stage('Archive Policy Report') {
       steps {
-        archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, floci-vpc/plan.json',
+	        archiveArtifacts artifacts: 'reports/jenkins-opa-*.json, */plan.json',
                          allowEmptyArchive: true
       }
     }
@@ -169,8 +170,9 @@ pipeline {
     stage('Apply To Floci') {
       when {
         allOf {
-          expression { return params.RUN_APPLY }
-          anyOf {
+	          expression { return params.RUN_APPLY }
+	          expression { return params.TF_DIR == 'floci-vpc' }
+	          anyOf {
             branch 'main'
             expression { return env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == null }
           }
