@@ -6,7 +6,7 @@ project     = "floci-vpc-lab"
 name = "floci-vpc-lab-staging"
 cidr = "10.40.0.0/16"
 
-azs              = ["ap-southeast-1a"]
+azs              = ["us-east-1"]
 public_subnets   = ["10.40.1.0/24"]
 private_subnets  = ["10.40.2.0/24"]
 database_subnets = ["10.40.3.0/24"]
