@@ -1,7 +1,7 @@
 aws_region  = "us-east-1"
 environment = "staging"
 project     = "floci-vpc-lab"
-owner       = "platform"
+# owner       = "platform"
 
 name = "floci-vpc-lab-staging"
 cidr = "10.40.0.0/16"
