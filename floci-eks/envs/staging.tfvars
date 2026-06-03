@@ -16,6 +16,14 @@ kubernetes_version         = "1.30"
 cluster_log_retention_days = 365
 autoscaling_mode           = "both"
 
+# Floci currently creates the EKS control plane, IAM, KMS, CloudWatch, and
+# Karpenter support resources, but its emulator APIs cannot reliably read back
+# node ingress SG rules or create managed node groups.
+create_node_ingress_security_group_rules = false
+create_node_egress_security_group_rule   = true
+create_managed_node_groups               = false
+create_cluster_addons                    = false
+
 node_groups = {
   web = {
     desired_size   = 2

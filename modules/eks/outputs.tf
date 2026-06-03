@@ -43,6 +43,11 @@ output "node_group_names" {
   value       = { for key, group in aws_eks_node_group.managed : key => group.node_group_name }
 }
 
+output "configured_node_group_names" {
+  description = "Expected node group names from configuration, including emulator runs where managed node groups are disabled."
+  value       = { for key in keys(var.node_groups) : key => "${local.cluster_name}-${key}" }
+}
+
 output "autoscaling_mode" {
   description = "Autoscaling integration mode used by the module."
   value       = var.autoscaling_mode

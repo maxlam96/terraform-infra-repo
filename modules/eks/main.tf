@@ -287,6 +287,8 @@ resource "aws_security_group" "nodes" {
 }
 
 resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
+  count = var.create_node_ingress_security_group_rules ? 1 : 0
+
   type                     = "ingress"
   from_port                = 443
   to_port                  = 443
@@ -297,6 +299,8 @@ resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
 }
 
 resource "aws_security_group_rule" "nodes_ingress_self" {
+  count = var.create_node_ingress_security_group_rules ? 1 : 0
+
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
@@ -307,6 +311,8 @@ resource "aws_security_group_rule" "nodes_ingress_self" {
 }
 
 resource "aws_security_group_rule" "nodes_egress_all" {
+  count = var.create_node_egress_security_group_rule ? 1 : 0
+
   type              = "egress"
   from_port         = 0
   to_port           = 0
@@ -352,7 +358,7 @@ resource "aws_eks_cluster" "this" {
 }
 
 resource "aws_eks_node_group" "managed" {
-  for_each = var.node_groups
+  for_each = var.create_managed_node_groups ? var.node_groups : {}
 
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${local.cluster_name}-${each.key}"
@@ -486,7 +492,7 @@ resource "aws_sqs_queue_policy" "karpenter" {
 }
 
 resource "aws_eks_addon" "this" {
-  for_each = var.cluster_addons
+  for_each = var.create_cluster_addons ? var.cluster_addons : {}
 
   cluster_name                = aws_eks_cluster.this.name
   addon_name                  = each.key

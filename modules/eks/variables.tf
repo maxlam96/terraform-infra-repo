@@ -87,6 +87,30 @@ variable "node_egress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "create_node_ingress_security_group_rules" {
+  description = "Create ingress security group rules between EKS cluster and node security groups. Keep enabled for AWS; disable only for emulators that cannot read these rule IDs back."
+  type        = bool
+  default     = true
+}
+
+variable "create_node_egress_security_group_rule" {
+  description = "Create the node security group egress rule."
+  type        = bool
+  default     = true
+}
+
+variable "create_managed_node_groups" {
+  description = "Create AWS managed EKS node groups. Keep enabled for AWS; disable only for emulators that do not support CreateNodegroup."
+  type        = bool
+  default     = true
+}
+
+variable "create_cluster_addons" {
+  description = "Create EKS managed addons. Keep enabled for AWS; disable only for emulators that do not support addon APIs."
+  type        = bool
+  default     = true
+}
+
 variable "node_groups" {
   description = "Managed node groups keyed by workload purpose."
   type = map(object({

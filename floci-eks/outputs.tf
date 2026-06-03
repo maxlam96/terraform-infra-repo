@@ -33,6 +33,11 @@ output "node_group_names" {
   value       = module.eks.node_group_names
 }
 
+output "configured_node_group_names" {
+  description = "Configured node group names, including Floci emulator runs where managed node groups are disabled."
+  value       = module.eks.configured_node_group_names
+}
+
 output "autoscaling_mode" {
   description = "Autoscaling integration mode used by the module."
   value       = module.eks.autoscaling_mode

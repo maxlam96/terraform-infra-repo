@@ -60,4 +60,8 @@ module "eks" {
 
 ## Floci Note
 
-Floci is useful for CI plan and OPA validation here, but it currently does not emulate the EKS control plane APIs. Keep Jenkins `RUN_APPLY=false` for `TF_DIR=floci-eks` unless you are targeting real AWS with a separate provider configuration.
+Floci can be used to validate and apply the EKS control plane, IAM, KMS,
+CloudWatch, security groups, and Karpenter support resources in this lab. Some
+emulated APIs still differ from AWS, so `floci-eks/envs/staging.tfvars` disables
+managed node groups, managed addons, and node ingress security group rules. Keep
+those flags enabled for real AWS environments.

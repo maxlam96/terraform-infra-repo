@@ -73,6 +73,30 @@ variable "autoscaling_mode" {
   }
 }
 
+variable "create_node_ingress_security_group_rules" {
+  description = "Create EKS node ingress security group rules."
+  type        = bool
+  default     = true
+}
+
+variable "create_node_egress_security_group_rule" {
+  description = "Create EKS node egress security group rule."
+  type        = bool
+  default     = true
+}
+
+variable "create_managed_node_groups" {
+  description = "Create AWS managed EKS node groups."
+  type        = bool
+  default     = true
+}
+
+variable "create_cluster_addons" {
+  description = "Create EKS managed addons."
+  type        = bool
+  default     = true
+}
+
 variable "node_groups" {
   description = "Managed node groups."
   type = map(object({
