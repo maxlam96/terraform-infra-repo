@@ -103,7 +103,6 @@ pipeline {
         dir("${env.TF_DIR}") {
           sh '''
             terraform plan \
-              -refresh=false \
               -out=tfplan \
               -var="floci_endpoint=${AWS_ENDPOINT_URL}" \
               -var-file=envs/${ENV}.tfvars
