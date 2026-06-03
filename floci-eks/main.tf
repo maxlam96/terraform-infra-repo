@@ -10,6 +10,7 @@ module "eks" {
   vpc_id                                   = var.vpc_id
   private_subnet_ids                       = var.private_subnet_ids
   kubernetes_version                       = var.kubernetes_version
+  enable_cluster_control_plane_logs        = var.enable_cluster_control_plane_logs
   cluster_log_retention_days               = var.cluster_log_retention_days
   enable_cluster_log_kms_key               = var.enable_cluster_log_kms_key
   enable_cluster_encryption_config         = var.enable_cluster_encryption_config

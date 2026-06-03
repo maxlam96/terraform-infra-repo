@@ -327,7 +327,7 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = var.kubernetes_version
 
-  enabled_cluster_log_types = var.enabled_cluster_log_types
+  enabled_cluster_log_types = var.enable_cluster_control_plane_logs ? var.enabled_cluster_log_types : []
 
   vpc_config {
     subnet_ids              = var.private_subnet_ids

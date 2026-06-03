@@ -64,6 +64,12 @@ variable "enabled_cluster_log_types" {
   default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 }
 
+variable "enable_cluster_control_plane_logs" {
+  description = "Enable EKS control plane logging. Keep enabled for AWS; disable only for emulators that do not support UpdateClusterConfig logging."
+  type        = bool
+  default     = true
+}
+
 variable "cluster_log_retention_days" {
   description = "CloudWatch retention for EKS control plane logs."
   type        = number
