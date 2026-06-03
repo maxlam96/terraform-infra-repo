@@ -76,6 +76,12 @@ variable "enable_cluster_log_kms_key" {
   default     = true
 }
 
+variable "enable_cluster_encryption_config" {
+  description = "Create the EKS Kubernetes secrets encryption_config block. Keep enabled for AWS; disable only for emulators that do not support AssociateEncryptionConfig."
+  type        = bool
+  default     = true
+}
+
 variable "autoscaling_mode" {
   description = "Autoscaling integration mode for EKS worker capacity."
   type        = string

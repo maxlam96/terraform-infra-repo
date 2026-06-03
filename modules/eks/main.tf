@@ -336,11 +336,15 @@ resource "aws_eks_cluster" "this" {
     endpoint_public_access  = false
   }
 
-  encryption_config {
-    resources = ["secrets"]
+  dynamic "encryption_config" {
+    for_each = var.enable_cluster_encryption_config ? [1] : []
 
-    provider {
-      key_arn = aws_kms_key.cluster.arn
+    content {
+      resources = ["secrets"]
+
+      provider {
+        key_arn = aws_kms_key.cluster.arn
+      }
     }
   }
 

@@ -27,6 +27,7 @@ create_self_managed_node_groups          = false
 create_floci_node_group_placeholders     = true
 create_cluster_addons                    = false
 enable_cluster_log_kms_key               = false
+enable_cluster_encryption_config         = false
 enable_cluster_access_config             = false
 self_managed_node_ami_id                 = "ami-0abcdef1234567890"
 

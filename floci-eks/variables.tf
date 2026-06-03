@@ -68,6 +68,12 @@ variable "enable_cluster_log_kms_key" {
   default     = true
 }
 
+variable "enable_cluster_encryption_config" {
+  description = "Create the EKS Kubernetes secrets encryption_config block."
+  type        = bool
+  default     = true
+}
+
 variable "enable_cluster_access_config" {
   description = "Create the EKS access_config block. Disable only for emulators that do not read this block back."
   type        = bool
