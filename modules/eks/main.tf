@@ -393,7 +393,7 @@ resource "aws_eks_node_group" "managed" {
 }
 
 resource "aws_iam_instance_profile" "node" {
-  count = var.create_self_managed_node_groups ? 1 : 0
+  count = var.create_self_managed_node_groups && !var.create_floci_node_group_placeholders ? 1 : 0
 
   name = "${local.cluster_name}-node-instance-profile"
   role = aws_iam_role.node.name
@@ -401,7 +401,7 @@ resource "aws_iam_instance_profile" "node" {
 }
 
 resource "aws_launch_template" "self_managed_node" {
-  for_each = var.create_self_managed_node_groups ? var.node_groups : {}
+  for_each = var.create_self_managed_node_groups && !var.create_floci_node_group_placeholders ? var.node_groups : {}
 
   name_prefix            = "${local.cluster_name}-${each.key}-"
   image_id               = var.self_managed_node_ami_id
@@ -465,7 +465,7 @@ resource "aws_launch_template" "self_managed_node" {
 }
 
 resource "aws_autoscaling_group" "self_managed_node" {
-  for_each = var.create_self_managed_node_groups ? var.node_groups : {}
+  for_each = var.create_self_managed_node_groups && !var.create_floci_node_group_placeholders ? var.node_groups : {}
 
   name                = "${local.cluster_name}-${each.key}"
   desired_capacity    = each.value.desired_size
@@ -490,6 +490,29 @@ resource "aws_autoscaling_group" "self_managed_node" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+
+  depends_on = [aws_eks_cluster.this]
+}
+
+resource "terraform_data" "floci_node_group" {
+  for_each = var.create_floci_node_group_placeholders ? var.node_groups : {}
+
+  input = {
+    cluster_name        = aws_eks_cluster.this.name
+    node_group_name     = "${local.cluster_name}-${each.key}"
+    workload            = each.key
+    min_size            = each.value.min_size
+    desired_size        = each.value.desired_size
+    max_size            = each.value.max_size
+    instance_types      = each.value.instance_types
+    autoscaling_mode    = var.autoscaling_mode
+    karpenter_discovery = local.cluster_name
+    tags = merge(local.common_tags, local.cluster_autoscaler_tags, local.karpenter_discovery_tags, each.value.tags, {
+      Name                                                     = "${local.cluster_name}-${each.key}"
+      "eks.amazonaws.com/cluster-name"                         = local.cluster_name
+      "k8s.io/cluster-autoscaler/node-template/label/workload" = each.key
+    })
   }
 
   depends_on = [aws_eks_cluster.this]

@@ -48,6 +48,11 @@ output "self_managed_node_group_names" {
   value       = { for key, group in aws_autoscaling_group.self_managed_node : key => group.name }
 }
 
+output "floci_node_group_names" {
+  description = "Terraform-only node group placeholder names for Floci emulator runs."
+  value       = { for key, group in terraform_data.floci_node_group : key => group.output.node_group_name }
+}
+
 output "configured_node_group_names" {
   description = "Expected node group names from configuration, including emulator runs where managed node groups are disabled."
   value       = { for key in keys(var.node_groups) : key => "${local.cluster_name}-${key}" }

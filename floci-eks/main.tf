@@ -16,6 +16,7 @@ module "eks" {
   create_node_egress_security_group_rule   = var.create_node_egress_security_group_rule
   create_managed_node_groups               = var.create_managed_node_groups
   create_self_managed_node_groups          = var.create_self_managed_node_groups
+  create_floci_node_group_placeholders     = var.create_floci_node_group_placeholders
   self_managed_node_ami_id                 = var.self_managed_node_ami_id
   create_cluster_addons                    = var.create_cluster_addons
   node_groups                              = var.node_groups

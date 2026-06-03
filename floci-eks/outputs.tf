@@ -38,6 +38,11 @@ output "self_managed_node_group_names" {
   value       = module.eks.self_managed_node_group_names
 }
 
+output "floci_node_group_names" {
+  description = "Terraform-only node group placeholder names for Floci emulator runs."
+  value       = module.eks.floci_node_group_names
+}
+
 output "configured_node_group_names" {
   description = "Configured node group names, including Floci emulator runs where managed node groups are disabled."
   value       = module.eks.configured_node_group_names

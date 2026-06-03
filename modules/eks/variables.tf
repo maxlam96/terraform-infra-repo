@@ -111,6 +111,12 @@ variable "create_self_managed_node_groups" {
   default     = false
 }
 
+variable "create_floci_node_group_placeholders" {
+  description = "Create Terraform-only node group placeholders for Floci emulator runs where node group APIs are unavailable."
+  type        = bool
+  default     = false
+}
+
 variable "self_managed_node_ami_id" {
   description = "AMI ID used by self-managed node groups. For AWS, use an EKS optimized AMI."
   type        = string
