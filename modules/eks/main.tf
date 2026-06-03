@@ -344,9 +344,13 @@ resource "aws_eks_cluster" "this" {
     }
   }
 
-  access_config {
-    authentication_mode                         = var.authentication_mode
-    bootstrap_cluster_creator_admin_permissions = false
+  dynamic "access_config" {
+    for_each = var.enable_cluster_access_config ? [1] : []
+
+    content {
+      authentication_mode                         = var.authentication_mode
+      bootstrap_cluster_creator_admin_permissions = false
+    }
   }
 
   tags = merge(local.common_tags, { Name = local.cluster_name })

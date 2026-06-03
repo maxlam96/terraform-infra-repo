@@ -12,6 +12,7 @@ module "eks" {
   kubernetes_version                       = var.kubernetes_version
   cluster_log_retention_days               = var.cluster_log_retention_days
   enable_cluster_log_kms_key               = var.enable_cluster_log_kms_key
+  enable_cluster_access_config             = var.enable_cluster_access_config
   autoscaling_mode                         = var.autoscaling_mode
   create_node_ingress_security_group_rules = var.create_node_ingress_security_group_rules
   create_node_egress_security_group_rule   = var.create_node_egress_security_group_rule

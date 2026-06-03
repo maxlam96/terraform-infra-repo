@@ -52,6 +52,12 @@ variable "authentication_mode" {
   default     = "API_AND_CONFIG_MAP"
 }
 
+variable "enable_cluster_access_config" {
+  description = "Create the EKS access_config block. Keep enabled for AWS; disable only for emulators that do not read this block back."
+  type        = bool
+  default     = true
+}
+
 variable "enabled_cluster_log_types" {
   description = "EKS control plane log types."
   type        = list(string)

@@ -63,5 +63,5 @@ module "eks" {
 Floci can be used to validate and apply the EKS control plane, IAM, KMS,
 CloudWatch, security groups, and Karpenter support resources in this lab. Some
 emulated APIs still differ from AWS, so `floci-eks/envs/staging.tfvars` disables
-managed node groups, managed addons, and node ingress security group rules. Keep
-those flags enabled for real AWS environments.
+managed node groups, managed addons, cluster access config, and node ingress
+security group rules. Keep those flags enabled for real AWS environments.

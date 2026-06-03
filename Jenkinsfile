@@ -18,7 +18,7 @@ pipeline {
 	    string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
 	    choice(name: 'TF_DIR',                      choices: ['floci-vpc', 'floci-eks'],                   description: 'Terraform stack to validate, plan, and check with OPA')
 	    choice(name: 'ENV',                         choices: ['staging', 'production'],                     description: 'Terraform environment')
-	    booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes. Only floci-vpc is Floci apply-compatible.')
+	    booleanParam(name: 'RUN_APPLY',             defaultValue: false,                                    description: 'Apply to Floci after OPA passes. EKS uses emulator compatibility flags for unsupported APIs.')
 	  }
 
   environment {

@@ -17,15 +17,17 @@ cluster_log_retention_days = 365
 autoscaling_mode           = "both"
 
 # Floci currently creates the EKS control plane, IAM, KMS, CloudWatch, and
-# Karpenter support resources, but its emulator APIs cannot reliably read back
-# node ingress SG rules or CloudWatch Logs KMS key association.
+# Karpenter support resources. The current public service matrix exposes EKS
+# cluster/tag routes, but not managed node group routes, so keep Terraform-only
+# node group placeholders for the emulator run.
 create_node_ingress_security_group_rules = false
 create_node_egress_security_group_rule   = true
-create_managed_node_groups               = true
+create_managed_node_groups               = false
 create_self_managed_node_groups          = false
-create_floci_node_group_placeholders     = false
+create_floci_node_group_placeholders     = true
 create_cluster_addons                    = false
 enable_cluster_log_kms_key               = false
+enable_cluster_access_config             = false
 self_managed_node_ami_id                 = "ami-0abcdef1234567890"
 
 node_groups = {
