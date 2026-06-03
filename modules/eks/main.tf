@@ -1,5 +1,7 @@
 locals {
-  cluster_name = coalesce(var.cluster_name, "${var.project}-${var.environment}-eks")
+  cluster_name           = coalesce(var.cluster_name, "${var.project}-${var.environment}-eks")
+  use_cluster_autoscaler = contains(["cluster-autoscaler", "both"], var.autoscaling_mode)
+  use_karpenter          = contains(["karpenter", "both"], var.autoscaling_mode)
 
   common_tags = merge(
     {
@@ -10,6 +12,15 @@ locals {
     },
     var.tags
   )
+
+  cluster_autoscaler_tags = local.use_cluster_autoscaler ? {
+    "k8s.io/cluster-autoscaler/enabled"               = "true"
+    "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+  } : {}
+
+  karpenter_discovery_tags = local.use_karpenter ? {
+    "karpenter.sh/discovery" = local.cluster_name
+  } : {}
 }
 
 data "aws_iam_policy_document" "cluster_assume_role" {
@@ -169,6 +180,73 @@ resource "aws_iam_role_policy" "node_ecr_read" {
   policy = data.aws_iam_policy_document.node_ecr_read_policy.json
 }
 
+data "aws_iam_policy_document" "karpenter" {
+  count = local.use_karpenter ? 1 : 0
+
+  statement {
+    sid = "KarpenterReadClusterAndCloudState"
+    actions = [
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypeOfferings",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeInstances",
+      "ec2:DescribeLaunchTemplates",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSpotPriceHistory",
+      "ec2:DescribeSubnets",
+      "eks:DescribeCluster",
+      "pricing:GetProducts",
+      "ssm:GetParameter",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "KarpenterManageCompute"
+    actions = [
+      "ec2:CreateFleet",
+      "ec2:CreateLaunchTemplate",
+      "ec2:CreateTags",
+      "ec2:DeleteLaunchTemplate",
+      "ec2:RunInstances",
+      "ec2:TerminateInstances",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "KarpenterPassNodeRole"
+    actions   = ["iam:PassRole"]
+    resources = [aws_iam_role.node.arn]
+  }
+
+  statement {
+    sid = "KarpenterReadInterruptionQueue"
+    actions = [
+      "sqs:DeleteMessage",
+      "sqs:GetQueueUrl",
+      "sqs:ReceiveMessage",
+    ]
+    resources = [aws_sqs_queue.karpenter[0].arn]
+  }
+}
+
+resource "aws_iam_policy" "karpenter" {
+  count = local.use_karpenter ? 1 : 0
+
+  name   = "${local.cluster_name}-karpenter-controller"
+  policy = data.aws_iam_policy_document.karpenter[0].json
+  tags   = merge(local.common_tags, { Name = "${local.cluster_name}-karpenter-controller-policy" })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node" {
+  count = local.use_karpenter ? 1 : 0
+
+  role       = aws_iam_role.node.name
+  policy_arn = aws_iam_policy.karpenter[0].arn
+}
+
 resource "aws_kms_key" "cluster" {
   description             = "KMS key for EKS secrets encryption: ${local.cluster_name}"
   deletion_window_in_days = var.kms_deletion_window_in_days
@@ -193,7 +271,7 @@ resource "aws_security_group" "cluster" {
   description = "EKS cluster security group"
   vpc_id      = var.vpc_id
 
-  tags = merge(local.common_tags, {
+  tags = merge(local.common_tags, local.karpenter_discovery_tags, {
     Name = "${local.cluster_name}-cluster-sg"
   })
 }
@@ -203,7 +281,7 @@ resource "aws_security_group" "nodes" {
   description = "EKS managed node group security group"
   vpc_id      = var.vpc_id
 
-  tags = merge(local.common_tags, {
+  tags = merge(local.common_tags, local.karpenter_discovery_tags, {
     Name = "${local.cluster_name}-nodes-sg"
   })
 }
@@ -297,7 +375,7 @@ resource "aws_eks_node_group" "managed" {
     max_unavailable = each.value.max_unavailable
   }
 
-  tags = merge(local.common_tags, each.value.tags, {
+  tags = merge(local.common_tags, local.cluster_autoscaler_tags, local.karpenter_discovery_tags, each.value.tags, {
     Name = "${local.cluster_name}-${each.key}"
   })
 
@@ -306,6 +384,105 @@ resource "aws_eks_node_group" "managed" {
     aws_iam_role_policy.node_cni,
     aws_iam_role_policy.node_ecr_read,
   ]
+}
+
+resource "aws_sqs_queue" "karpenter_dlq" {
+  count = local.use_karpenter ? 1 : 0
+
+  name                      = "${local.cluster_name}-karpenter-interruptions-dlq"
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+  tags                      = merge(local.common_tags, { Name = "${local.cluster_name}-karpenter-interruptions-dlq" })
+}
+
+resource "aws_sqs_queue" "karpenter" {
+  count = local.use_karpenter ? 1 : 0
+
+  name                      = "${local.cluster_name}-karpenter-interruptions"
+  message_retention_seconds = 1209600
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.karpenter_dlq[0].arn
+    maxReceiveCount     = 5
+  })
+  sqs_managed_sse_enabled = true
+  tags                    = merge(local.common_tags, { Name = "${local.cluster_name}-karpenter-interruptions" })
+}
+
+resource "aws_cloudwatch_event_rule" "karpenter" {
+  for_each = local.use_karpenter ? {
+    health = {
+      detail_type = ["AWS Health Event"]
+      source      = ["aws.health"]
+    }
+    instance_rebalance = {
+      detail_type = ["EC2 Instance Rebalance Recommendation"]
+      source      = ["aws.ec2"]
+    }
+    instance_state_change = {
+      detail_type = ["EC2 Instance State-change Notification"]
+      source      = ["aws.ec2"]
+    }
+    spot_interruption = {
+      detail_type = ["EC2 Spot Instance Interruption Warning"]
+      source      = ["aws.ec2"]
+    }
+  } : {}
+
+  name = "${local.cluster_name}-karpenter-${each.key}"
+  event_pattern = jsonencode({
+    detail-type = each.value.detail_type
+    source      = each.value.source
+  })
+  tags = merge(local.common_tags, { Name = "${local.cluster_name}-karpenter-${each.key}" })
+}
+
+resource "aws_cloudwatch_event_target" "karpenter" {
+  for_each = aws_cloudwatch_event_rule.karpenter
+
+  rule = each.value.name
+  arn  = aws_sqs_queue.karpenter[0].arn
+}
+
+data "aws_iam_policy_document" "karpenter_queue" {
+  count = local.use_karpenter ? 1 : 0
+
+  statement {
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["sqs:*"]
+    resources = [aws_sqs_queue.karpenter[0].arn]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+
+  statement {
+    sid     = "AllowEventBridgeToSendKarpenterInterruptionEvents"
+    actions = ["sqs:SendMessage"]
+    resources = [
+      aws_sqs_queue.karpenter[0].arn,
+    ]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "karpenter" {
+  count = local.use_karpenter ? 1 : 0
+
+  queue_url = aws_sqs_queue.karpenter[0].id
+  policy    = data.aws_iam_policy_document.karpenter_queue[0].json
 }
 
 resource "aws_eks_addon" "this" {

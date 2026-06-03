@@ -14,21 +14,10 @@ private_subnet_ids = [
 
 kubernetes_version         = "1.30"
 cluster_log_retention_days = 365
+autoscaling_mode           = "both"
 
 node_groups = {
-  system = {
-    desired_size   = 3
-    instance_types = ["m6i.large"]
-    max_size       = 6
-    min_size       = 3
-    labels = {
-      workload = "system"
-    }
-    tags = {
-      WorkloadTier = "system"
-    }
-  }
-  app = {
+  web = {
     capacity_type   = "ON_DEMAND"
     desired_size    = 3
     disk_size       = 100
@@ -37,10 +26,40 @@ node_groups = {
     max_unavailable = 1
     min_size        = 3
     labels = {
-      workload = "app"
+      workload = "web"
     }
     tags = {
-      WorkloadTier = "application"
+      WorkloadTier = "web"
+    }
+  }
+  backend = {
+    capacity_type   = "ON_DEMAND"
+    desired_size    = 3
+    disk_size       = 100
+    instance_types  = ["m6i.large"]
+    max_size        = 12
+    max_unavailable = 1
+    min_size        = 3
+    labels = {
+      workload = "backend"
+    }
+    tags = {
+      WorkloadTier = "backend"
+    }
+  }
+  worker = {
+    capacity_type   = "ON_DEMAND"
+    desired_size    = 3
+    disk_size       = 100
+    instance_types  = ["m6i.large"]
+    max_size        = 15
+    max_unavailable = 1
+    min_size        = 3
+    labels = {
+      workload = "worker"
+    }
+    tags = {
+      WorkloadTier = "worker"
     }
   }
 }

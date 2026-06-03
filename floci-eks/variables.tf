@@ -62,6 +62,17 @@ variable "cluster_log_retention_days" {
   default     = 90
 }
 
+variable "autoscaling_mode" {
+  description = "Autoscaling integration mode for EKS worker capacity."
+  type        = string
+  default     = "cluster-autoscaler"
+
+  validation {
+    condition     = contains(["cluster-autoscaler", "karpenter", "both"], var.autoscaling_mode)
+    error_message = "autoscaling_mode must be cluster-autoscaler, karpenter, or both."
+  }
+}
+
 variable "node_groups" {
   description = "Managed node groups."
   type = map(object({

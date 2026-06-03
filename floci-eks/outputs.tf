@@ -32,3 +32,18 @@ output "node_group_names" {
   description = "Managed node group names."
   value       = module.eks.node_group_names
 }
+
+output "autoscaling_mode" {
+  description = "Autoscaling integration mode used by the module."
+  value       = module.eks.autoscaling_mode
+}
+
+output "karpenter_controller_policy_arn" {
+  description = "IAM policy ARN for the Karpenter controller when Karpenter is enabled."
+  value       = module.eks.karpenter_controller_policy_arn
+}
+
+output "karpenter_interruption_queue_url" {
+  description = "SQS queue URL for Karpenter interruption handling when Karpenter is enabled."
+  value       = module.eks.karpenter_interruption_queue_url
+}

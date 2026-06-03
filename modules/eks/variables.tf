@@ -64,6 +64,17 @@ variable "cluster_log_retention_days" {
   default     = 365
 }
 
+variable "autoscaling_mode" {
+  description = "Autoscaling integration mode for EKS worker capacity."
+  type        = string
+  default     = "cluster-autoscaler"
+
+  validation {
+    condition     = contains(["cluster-autoscaler", "karpenter", "both"], var.autoscaling_mode)
+    error_message = "autoscaling_mode must be cluster-autoscaler, karpenter, or both."
+  }
+}
+
 variable "kms_deletion_window_in_days" {
   description = "Deletion window for the EKS KMS key."
   type        = number
@@ -92,13 +103,40 @@ variable "node_groups" {
   }))
 
   default = {
-    system = {
+    web = {
       desired_size   = 2
       instance_types = ["t3.large"]
-      max_size       = 4
+      max_size       = 6
       min_size       = 2
       labels = {
-        workload = "system"
+        workload = "web"
+      }
+      tags = {
+        WorkloadTier = "web"
+      }
+    }
+    backend = {
+      desired_size   = 2
+      instance_types = ["t3.large"]
+      max_size       = 8
+      min_size       = 2
+      labels = {
+        workload = "backend"
+      }
+      tags = {
+        WorkloadTier = "backend"
+      }
+    }
+    worker = {
+      desired_size   = 2
+      instance_types = ["t3.large"]
+      max_size       = 10
+      min_size       = 2
+      labels = {
+        workload = "worker"
+      }
+      tags = {
+        WorkloadTier = "worker"
       }
     }
   }

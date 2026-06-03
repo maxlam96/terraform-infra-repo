@@ -10,6 +10,9 @@ Reusable EKS module for regulated AWS workloads.
 - Managed node groups run in private subnets.
 - SSH remote access is not configured on node groups.
 - Node groups must run at least two desired nodes.
+- Workload capacity is split into `web`, `backend`, and `worker` managed node groups by default.
+- Cluster Autoscaler tags are enabled when `autoscaling_mode = "cluster-autoscaler"` or `"both"`.
+- Karpenter discovery tags, controller IAM policy, interruption SQS queue, and EventBridge interruption rules are created when `autoscaling_mode = "karpenter"` or `"both"`.
 - IAM roles use AWS managed EKS policies without administrator attachments.
 
 ## Example
@@ -24,22 +27,36 @@ module "eks" {
   project      = "payments"
 
   vpc_id = "vpc-1234567890abcdef0"
-  private_subnet_ids = [
-    "subnet-private-a",
-    "subnet-private-b",
-    "subnet-private-c",
-  ]
+	  private_subnet_ids = [
+	    "subnet-private-a",
+	    "subnet-private-b",
+	    "subnet-private-c",
+	  ]
 
-  node_groups = {
-    system = {
-      desired_size   = 3
-      instance_types = ["m6i.large"]
-      max_size       = 6
-      min_size       = 3
-    }
-  }
-}
-```
+	  autoscaling_mode = "both"
+
+	  node_groups = {
+	    web = {
+	      desired_size   = 3
+	      instance_types = ["m6i.large"]
+	      max_size       = 9
+	      min_size       = 3
+	    }
+	    backend = {
+	      desired_size   = 3
+	      instance_types = ["m6i.large"]
+	      max_size       = 12
+	      min_size       = 3
+	    }
+	    worker = {
+	      desired_size   = 3
+	      instance_types = ["m6i.large"]
+	      max_size       = 15
+	      min_size       = 3
+	    }
+	  }
+	}
+	```
 
 ## Floci Note
 

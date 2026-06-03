@@ -11,6 +11,7 @@ module "eks" {
   private_subnet_ids         = var.private_subnet_ids
   kubernetes_version         = var.kubernetes_version
   cluster_log_retention_days = var.cluster_log_retention_days
+  autoscaling_mode           = var.autoscaling_mode
   node_groups                = var.node_groups
   cluster_addons             = var.cluster_addons
 }

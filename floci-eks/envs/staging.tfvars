@@ -14,18 +14,43 @@ private_subnet_ids = [
 
 kubernetes_version         = "1.30"
 cluster_log_retention_days = 365
+autoscaling_mode           = "both"
 
 node_groups = {
-  system = {
+  web = {
     desired_size   = 2
     instance_types = ["t3.large"]
-    max_size       = 4
+    max_size       = 6
     min_size       = 2
     labels = {
-      workload = "system"
+      workload = "web"
     }
     tags = {
-      WorkloadTier = "system"
+      WorkloadTier = "web"
+    }
+  }
+  backend = {
+    desired_size   = 2
+    instance_types = ["t3.large"]
+    max_size       = 8
+    min_size       = 2
+    labels = {
+      workload = "backend"
+    }
+    tags = {
+      WorkloadTier = "backend"
+    }
+  }
+  worker = {
+    desired_size   = 2
+    instance_types = ["t3.large"]
+    max_size       = 10
+    min_size       = 2
+    labels = {
+      workload = "worker"
+    }
+    tags = {
+      WorkloadTier = "worker"
     }
   }
 }
