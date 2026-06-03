@@ -262,7 +262,7 @@ resource "aws_kms_alias" "cluster" {
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/aws/eks/${local.cluster_name}/cluster"
   retention_in_days = var.cluster_log_retention_days
-  kms_key_id        = aws_kms_key.cluster.arn
+  kms_key_id        = var.enable_cluster_log_kms_key ? aws_kms_key.cluster.arn : null
   tags              = merge(local.common_tags, { Name = "${local.cluster_name}-control-plane-logs" })
 }
 

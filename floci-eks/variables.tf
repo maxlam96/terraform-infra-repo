@@ -62,6 +62,12 @@ variable "cluster_log_retention_days" {
   default     = 90
 }
 
+variable "enable_cluster_log_kms_key" {
+  description = "Associate the EKS control plane CloudWatch log group with the cluster KMS key."
+  type        = bool
+  default     = true
+}
+
 variable "autoscaling_mode" {
   description = "Autoscaling integration mode for EKS worker capacity."
   type        = string
