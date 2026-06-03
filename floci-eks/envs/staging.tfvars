@@ -5,11 +5,11 @@ owner       = "platform"
 
 cluster_name = "floci-eks-lab-staging"
 
-# Floci does not emulate the EKS control plane; these IDs are plan-time lab inputs.
-vpc_id = "vpc-599a9b14"
+# Use the VPC created by the floci-vpc staging pipeline.
+vpc_id = "vpc-5d4764bd"
 private_subnet_ids = [
-  "subnet-e59f9890",
-  "subnet-floci-private-b",
+  "subnet-35c469d1",
+  "subnet-ae1fbf67",
 ]
 
 kubernetes_version         = "1.30"
