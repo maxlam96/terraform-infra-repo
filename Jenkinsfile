@@ -44,10 +44,13 @@ pipeline {
       }
     }
 
-    stage('Floci Health Check') {
-      steps {
-        sh '''
-          set -eu
+	    stage('Floci Health Check') {
+	      when {
+	        expression { return env.TF_DIR == 'floci-vpc' || params.RUN_APPLY }
+	      }
+	      steps {
+	        sh '''
+	          set -eu
           echo "Checking Floci at ${AWS_ENDPOINT_URL}"
           curl -fsS "${AWS_ENDPOINT_URL}/_localstack/health" || curl -fsS "${AWS_ENDPOINT_URL}"
         '''
