@@ -18,11 +18,13 @@ autoscaling_mode           = "both"
 
 # Floci currently creates the EKS control plane, IAM, KMS, CloudWatch, and
 # Karpenter support resources, but its emulator APIs cannot reliably read back
-# node ingress SG rules or create managed node groups.
+# node ingress SG rules or create AWS managed node groups.
 create_node_ingress_security_group_rules = false
 create_node_egress_security_group_rule   = true
 create_managed_node_groups               = false
+create_self_managed_node_groups          = true
 create_cluster_addons                    = false
+self_managed_node_ami_id                 = "ami-0abcdef1234567890"
 
 node_groups = {
   web = {

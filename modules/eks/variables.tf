@@ -105,6 +105,18 @@ variable "create_managed_node_groups" {
   default     = true
 }
 
+variable "create_self_managed_node_groups" {
+  description = "Create self-managed EKS worker capacity with EC2 Launch Templates and Auto Scaling Groups."
+  type        = bool
+  default     = false
+}
+
+variable "self_managed_node_ami_id" {
+  description = "AMI ID used by self-managed node groups. For AWS, use an EKS optimized AMI."
+  type        = string
+  default     = "ami-0abcdef1234567890"
+}
+
 variable "create_cluster_addons" {
   description = "Create EKS managed addons. Keep enabled for AWS; disable only for emulators that do not support addon APIs."
   type        = bool

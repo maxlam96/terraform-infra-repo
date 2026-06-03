@@ -392,6 +392,109 @@ resource "aws_eks_node_group" "managed" {
   ]
 }
 
+resource "aws_iam_instance_profile" "node" {
+  count = var.create_self_managed_node_groups ? 1 : 0
+
+  name = "${local.cluster_name}-node-instance-profile"
+  role = aws_iam_role.node.name
+  tags = merge(local.common_tags, { Name = "${local.cluster_name}-node-instance-profile" })
+}
+
+resource "aws_launch_template" "self_managed_node" {
+  for_each = var.create_self_managed_node_groups ? var.node_groups : {}
+
+  name_prefix            = "${local.cluster_name}-${each.key}-"
+  image_id               = var.self_managed_node_ami_id
+  instance_type          = each.value.instance_types[0]
+  update_default_version = true
+  user_data = base64encode(templatefile("${path.module}/templates/bootstrap.sh.tftpl", {
+    cluster_name = aws_eks_cluster.this.name
+  }))
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      encrypted             = true
+      volume_size           = each.value.disk_size
+      volume_type           = "gp3"
+      delete_on_termination = true
+    }
+  }
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.node[0].name
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 2
+    http_tokens                 = "required"
+  }
+
+  network_interfaces {
+    associate_public_ip_address = false
+    delete_on_termination       = true
+    security_groups             = [aws_security_group.nodes.id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(local.common_tags, local.cluster_autoscaler_tags, local.karpenter_discovery_tags, each.value.tags, {
+      Name = "${local.cluster_name}-${each.key}"
+    })
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(local.common_tags, each.value.tags, {
+      Name = "${local.cluster_name}-${each.key}-root"
+    })
+  }
+
+  tags = merge(local.common_tags, local.karpenter_discovery_tags, each.value.tags, {
+    Name = "${local.cluster_name}-${each.key}-launch-template"
+  })
+
+  depends_on = [
+    aws_eks_cluster.this,
+    aws_iam_role_policy.node_worker,
+    aws_iam_role_policy.node_cni,
+    aws_iam_role_policy.node_ecr_read,
+  ]
+}
+
+resource "aws_autoscaling_group" "self_managed_node" {
+  for_each = var.create_self_managed_node_groups ? var.node_groups : {}
+
+  name                = "${local.cluster_name}-${each.key}"
+  desired_capacity    = each.value.desired_size
+  max_size            = each.value.max_size
+  min_size            = each.value.min_size
+  vpc_zone_identifier = var.private_subnet_ids
+
+  launch_template {
+    id      = aws_launch_template.self_managed_node[each.key].id
+    version = "$Latest"
+  }
+
+  dynamic "tag" {
+    for_each = merge(local.common_tags, local.cluster_autoscaler_tags, local.karpenter_discovery_tags, each.value.tags, {
+      Name                                                     = "${local.cluster_name}-${each.key}"
+      "eks.amazonaws.com/cluster-name"                         = local.cluster_name
+      "k8s.io/cluster-autoscaler/node-template/label/workload" = each.key
+    })
+
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
+
+  depends_on = [aws_eks_cluster.this]
+}
+
 resource "aws_sqs_queue" "karpenter_dlq" {
   count = local.use_karpenter ? 1 : 0
 

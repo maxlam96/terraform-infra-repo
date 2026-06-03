@@ -12,6 +12,7 @@ pipeline {
   parameters {
     string(name: 'FLOCI_ENDPOINT',              defaultValue: 'http://192.168.251.1:4566',              description: 'Remote Floci endpoint')
     string(name: 'POLICY_REPO_URL',             defaultValue: 'https://github.com/maxlam96/tf-policy-repo.git', description: 'OPA policy repository URL')
+    string(name: 'TF_STATE_BUCKET',             defaultValue: 'terraform-state',                       description: 'S3 bucket on Floci used for Terraform remote state')
 	    string(name: 'POLICY_REPO_BRANCH',          defaultValue: 'main',                                   description: 'OPA policy repository branch')
 	    string(name: 'POLICY_REPO_CREDENTIALS_ID',  defaultValue: 'maxlam96',                               description: 'Jenkins credentials ID for the OPA policy repository')
 	    string(name: 'NETWORK_APPROVERS',           defaultValue: 'network-team',                           description: 'Jenkins users/groups allowed to approve VPC creation')
@@ -27,9 +28,10 @@ pipeline {
     REPORT_DIR          = 'reports'
     AWS_ACCESS_KEY_ID       = 'test'
     AWS_SECRET_ACCESS_KEY   = 'test'
-    AWS_DEFAULT_REGION      = 'ap-southeast-1'
+    AWS_DEFAULT_REGION      = 'us-east-1'
     AWS_ENDPOINT_URL        = "${params.FLOCI_ENDPOINT}"
     TF_IN_AUTOMATION        = 'true'
+    TF_STATE_BUCKET         = "${params.TF_STATE_BUCKET ?: 'terraform-state'}"
   }
 
   stages {
@@ -44,7 +46,7 @@ pipeline {
       }
     }
 
-	    stage('Floci Health Check') {
+    stage('Floci Health Check') {
 	      when {
 	        expression { return env.TF_DIR == 'floci-vpc' || params.RUN_APPLY }
 	      }
@@ -57,11 +59,40 @@ pipeline {
       }
     }
 
+    stage('Prepare Terraform Backend') {
+      steps {
+        sh '''
+          set -eu
+          echo "Preparing Terraform state bucket s3://${TF_STATE_BUCKET} at ${AWS_ENDPOINT_URL}"
+
+          if command -v aws >/dev/null 2>&1; then
+            aws --endpoint-url "${AWS_ENDPOINT_URL}" s3api head-bucket --bucket "${TF_STATE_BUCKET}" >/dev/null 2>&1 || \
+              aws --endpoint-url "${AWS_ENDPOINT_URL}" s3api create-bucket --bucket "${TF_STATE_BUCKET}"
+          else
+            curl -fsS -X PUT "${AWS_ENDPOINT_URL}/${TF_STATE_BUCKET}" >/dev/null || true
+          fi
+        '''
+      }
+    }
+
     stage('Terraform Validate') {
       steps {
         dir("${env.TF_DIR}") {
           sh 'terraform fmt -check -recursive'
-          sh 'terraform init -input=false'
+          sh '''
+            terraform init -input=false -reconfigure \
+              -backend-config="bucket=${TF_STATE_BUCKET}" \
+              -backend-config="key=${TF_DIR}/${ENV}.tfstate" \
+              -backend-config="region=${AWS_DEFAULT_REGION}" \
+              -backend-config="access_key=${AWS_ACCESS_KEY_ID}" \
+              -backend-config="secret_key=${AWS_SECRET_ACCESS_KEY}" \
+              -backend-config="endpoint=${AWS_ENDPOINT_URL}" \
+              -backend-config="skip_credentials_validation=true" \
+              -backend-config="skip_metadata_api_check=true" \
+              -backend-config="skip_requesting_account_id=true" \
+              -backend-config="skip_region_validation=true" \
+              -backend-config="force_path_style=true"
+          '''
           sh 'terraform validate'
         }
       }

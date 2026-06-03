@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ -x /etc/eks/bootstrap.sh ]; then
+  /etc/eks/bootstrap.sh "${cluster_name}"
+fi
